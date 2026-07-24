@@ -1,6 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import { NavTabs } from "@/components/NavTabs";
-import { APP_TITLE } from "@/lib/config";
+import { APP_TITLE, BRAND_COLOR_OVERRIDES } from "@/lib/config";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -21,12 +21,17 @@ export const metadata = {
 export default function RootLayout({
   children,
 }) {
+  const brandOverrides = Object.entries(BRAND_COLOR_OVERRIDES).filter(([, value]) => value);
+
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex h-dvh flex-col overflow-hidden" suppressHydrationWarning>
+        {brandOverrides.length > 0 && (
+          <style>{`:root{${brandOverrides.map(([name, value]) => `${name}:${value};`).join("")}}`}</style>
+        )}
         <header className="shrink-0 border-b border-brand-ink/10 bg-white/95 backdrop-blur">
           <div className="h-1 bg-brand-primary" />
           {/* On mobile the title row is hidden to save vertical space; this

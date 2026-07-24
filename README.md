@@ -37,11 +37,12 @@ Every push to your new repo's main branch redeploys automatically. So if you lat
 | `SITE_PASSCODE` | Yes | The shared login passcode. The app won't start without it. That's intentional, not an oversight. |
 | `UPSTASH_REDIS_REST_URL` | Yes | Where your data (events, budget, contacts) actually lives. Auto-filled if you add the Upstash integration during setup (step 2 above). |
 | `UPSTASH_REDIS_REST_TOKEN` | Yes | Access token for that same database. Also auto-filled by the Upstash integration. |
+| `NEXT_PUBLIC_BRAND_PRIMARY`, `NEXT_PUBLIC_BRAND_ACCENT`, `NEXT_PUBLIC_BRAND_ACCENT_DEEP`, `NEXT_PUBLIC_BRAND_INK` | No | Optional brand colors (hex). Leave unset to use the shared default palette; set these on your own project if you want your instance's colors to differ without editing code. |
 
 ## Customizing for your chapter
 
 - **Name**: set `NEXT_PUBLIC_CHAPTER_NAME` (Vercel → your project → Settings → Environment Variables). No code edit needed.
-- **Colors**: edit the CSS variables (`--color-brand-primary`, `--color-brand-accent`, `--color-brand-ink`, etc.) in `src/app/globals.css`. This one needs the local dev setup below.
+- **Colors**: set the `NEXT_PUBLIC_BRAND_*` environment variables above to your chapter's own colors, no code edit needed. Or, if you're already in the codebase, edit the defaults directly in `src/app/globals.css` (`--color-brand-primary`, `--color-brand-accent`, `--color-brand-ink`, etc.) — that needs the local dev setup below.
 - **Event categories**: handled entirely from the in-app Categories tab. Add, rename, recolor, or delete them as you like. Each category can also be marked as netting revenue (cost offset by income, like a philanthropy event), excluded from the budget total (Recruitment, say), or flagged as another org's event (kept out of your budget and calendar export).
 - **Drink & supply presets**: managed from the Autofill tab, per category.
 
