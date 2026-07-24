@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f7f6f3;
+  --foreground: #171717;
+
+  /* Default brand palette — edit these to your chapter's colors. */
+  --color-brand-primary: #2563eb;
+  --color-brand-accent: #d97706;
+  /* Deep step of the accent (its tonal-ramp shade), for accent-colored text on
+     an accent tint — the base accent fails AA there; this clears it. */
+  --color-brand-accent-deep: #92400e;
+  --color-brand-ink: #1e293b;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  --color-brand-primary: var(--color-brand-primary);
+  --color-brand-accent: var(--color-brand-accent);
+  --color-brand-accent-deep: var(--color-brand-accent-deep);
+  --color-brand-ink: var(--color-brand-ink);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
