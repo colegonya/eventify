@@ -1,71 +1,82 @@
 # Greek Social Calendar
 
-A shared social calendar and budget tracker for a fraternity or sorority's exec board — built for one chapter's actual planning workflow (categories, co-hosted events, a semester budget cap) rather than a generic calendar app.
+A shared social calendar and budget tracker for a fraternity or sorority's exec board. Built around one chapter's actual planning workflow (categories, co-hosted events, a semester budget cap), not a generic calendar app with the labels swapped.
 
 ## Features
 
-- **Calendar** — month-grid view of the semester's events, with conflict detection (same-day time overlaps) flagged by severity.
-- **Budget** — running totals (Expected Spend, Actual Spend) against a semester budget cap, entered per event. Includes an equipment wishlist that carries unbought items forward semester to semester.
-- **Contacts** — per-semester list of other orgs' social chairs and their outreach status.
-- **Categories** — event categories (Mixer, Formal, Philanthropy, etc.) are data you own, not hardcoded. Add, edit, recolor, or delete them from the Categories tab — no code changes required.
-- **Drink & supply calculator** — per-event cost estimate with an "Autofill" button pulling from editable presets per category.
-- **Calendar export** — one-time `.ics` export of your chapter's own hosted events.
-- **Passcode-gated access** — one shared passcode for the whole exec board; no per-user accounts.
+- **Calendar**: month-grid view of the semester, with conflict detection that flags same-day time overlaps by severity.
+- **Budget**: running totals (Expected Spend, Actual Spend) against a semester cap, entered per event. There's also an equipment wishlist that carries unbought items forward from one semester to the next.
+- **Contacts**: a per-semester list of other orgs' social chairs and where things stand with each one.
+- **Categories**: event categories (Mixer, Formal, Philanthropy, etc.) are data you own, not hardcoded. Add, edit, recolor, or delete them from the Categories tab without touching any code.
+- **Drink & supply calculator**: per-event cost estimates, with an "Autofill" button that pulls from editable presets per category.
+- **Calendar export**: a one-time `.ics` export of your chapter's own hosted events.
+- **Passcode-gated access**: one shared passcode for the whole exec board. No per-user accounts to manage.
 
-## Setup
+## Deploy your own instance
+
+You don't need to write code or open a terminal for this. Grab two free accounts, [GitHub](https://github.com/signup) and [Vercel](https://vercel.com/signup), and you're set. Vercel lets you sign up with GitHub in one click, so this takes about thirty seconds.
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fcolegonya%2Fgreek-social-calendar&env=NEXT_PUBLIC_CHAPTER_NAME,SITE_PASSCODE&envDescription=Your%20chapter%20name%20and%20a%20shared%20login%20passcode%20for%20your%20exec%20board.&envLink=https%3A%2F%2Fgithub.com%2Fcolegonya%2Fgreek-social-calendar%23environment-variables)
+
+1. **Click the button above.** Vercel asks you to sign in with GitHub, then copies this code into a new repository under your own account and starts setting up a matching Vercel project. Nothing here touches the original repo.
+2. **Add a database.** Same setup screen: find Storage, click Create Database, choose Upstash (Redis), and follow its prompts. It provisions the database and wires it up on its own. You don't need your own Upstash account or any API keys for this part.
+3. **Fill in the two environment variables it asks for.**
+   - `NEXT_PUBLIC_CHAPTER_NAME`: your chapter's name, e.g. `Alpha Beta`. Shows up as "Alpha Beta Social Calendar" throughout the app.
+   - `SITE_PASSCODE`: pick anything. This is what your exec board types in to log in, so make it something you can drop in a group chat without an outsider guessing it.
+4. **Click Deploy.** A minute or two later you'll have a live URL like `your-project.vercel.app`. That's your chapter's calendar, running for real.
+
+Log in with the passcode you picked and you'll land on a pre-seeded example semester. All of it, events, contacts, categories, is made up. Clear it out and replace it with your own whenever you get around to it; there's no rush.
+
+Every push to your new repo's main branch redeploys automatically. So if you later decide to tweak the code (see [Local development](#local-development-optional) below), Vercel just picks it up.
+
+### Environment variables
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `NEXT_PUBLIC_CHAPTER_NAME` | Yes | Your chapter's name. Defaults to `Blank` if unset, so it's obvious setup isn't finished. |
+| `SITE_PASSCODE` | Yes | The shared login passcode. The app won't start without it. That's intentional, not an oversight. |
+| `UPSTASH_REDIS_REST_URL` | Yes | Where your data (events, budget, contacts) actually lives. Auto-filled if you add the Upstash integration during setup (step 2 above). |
+| `UPSTASH_REDIS_REST_TOKEN` | Yes | Access token for that same database. Also auto-filled by the Upstash integration. |
+
+## Customizing for your chapter
+
+- **Name**: set `NEXT_PUBLIC_CHAPTER_NAME` (Vercel → your project → Settings → Environment Variables). No code edit needed.
+- **Colors**: edit the CSS variables (`--color-brand-primary`, `--color-brand-accent`, `--color-brand-ink`, etc.) in `src/app/globals.css`. This one needs the local dev setup below.
+- **Event categories**: handled entirely from the in-app Categories tab. Add, rename, recolor, or delete them as you like. Each category can also be marked as netting revenue (cost offset by income, like a philanthropy event), excluded from the budget total (Recruitment, say), or flagged as another org's event (kept out of your budget and calendar export).
+- **Drink & supply presets**: managed from the Autofill tab, per category.
+
+## Local development (optional)
+
+You only need this if you actually want to edit the code, say to change colors or add a feature. Just running your own instance doesn't require any of it.
 
 ### 1. Clone and install
 
 ```bash
-git clone <your-fork-url>
+git clone <your-repo-url>
 cd greek-social-calendar
 npm install
 ```
 
-### 2. Provision a Redis database
+`<your-repo-url>` is whatever repo Vercel created for you in step 1 above, or your own fork.
 
-Data is stored in Upstash Redis (Vercel's current recommended key-value store — "Vercel KV" is deprecated). Easiest path: create your Vercel project first (see [Deploying](#deploying-to-vercel) below), then add the **Upstash** integration from the Vercel Marketplace — it provisions a database and injects the two env vars below automatically.
+### 2. Configure environment variables
 
-If you'd rather set it up before deploying, create a free database directly at [upstash.com](https://upstash.com) and copy its REST URL and token.
-
-### 3. Configure environment variables
-
-Copy the example file and fill it in:
+Copy the example file and fill it in, reusing the values from your Vercel project (Settings → Environment Variables) or pointing at a separate test database:
 
 ```bash
 cp .env.example .env.local
 ```
 
-| Variable | Description |
-| --- | --- |
-| `UPSTASH_REDIS_REST_URL` | From your Upstash database's REST API section. |
-| `UPSTASH_REDIS_REST_TOKEN` | From the same place. |
-| `NEXT_PUBLIC_CHAPTER_NAME` | Your chapter's name, e.g. `Alpha Beta`. Shows up as "Alpha Beta Social Calendar" throughout the app. Defaults to `Blank` if unset. |
-| `SITE_PASSCODE` | The shared passcode your exec board uses to log in. The app refuses to start without this set — there's no default. |
+The [environment variables](#environment-variables) table above covers what each value is and where to find it. Want a separate database for local testing instead of your production one? Create a free one at [upstash.com](https://upstash.com) and copy its REST URL and token.
 
-### 4. Run it locally
+### 3. Run it locally
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000), log in with the passcode you set, and you'll land on a pre-seeded example semester. Everything in it (events, contacts, categories) is fictional placeholder data — edit or delete it from the Calendar, Contacts, and Categories tabs once you're ready to enter your own.
-
-## Deploying to Vercel
-
-1. Push this repo to your own GitHub account.
-2. In Vercel, click **Add New → Project** and import that repo.
-3. Before the first deploy, add the **Upstash** integration (Vercel Marketplace) to the project, or add the two `UPSTASH_REDIS_REST_*` variables manually if you provisioned Upstash yourself.
-4. Add `NEXT_PUBLIC_CHAPTER_NAME` and `SITE_PASSCODE` under Project Settings → Environment Variables.
-5. Deploy. Every push to your main branch redeploys automatically.
-
-## Customizing for your chapter
-
-- **Name:** set `NEXT_PUBLIC_CHAPTER_NAME` (see above) — no code edit needed.
-- **Colors:** edit the CSS variables (`--color-brand-primary`, `--color-brand-accent`, `--color-brand-ink`, etc.) in `src/app/globals.css`.
-- **Event categories:** manage entirely from the in-app **Categories** tab — add, rename, recolor, or delete. Each category can also be marked as netting revenue (cost is offset by income, e.g. a philanthropy event), excluded from the budget total (e.g. Recruitment), or flagged as another org's event (excluded from your budget and calendar export).
-- **Drink & supply presets:** managed from the **Autofill** tab, per category.
+Open [http://localhost:3000](http://localhost:3000) and log in with your passcode.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
