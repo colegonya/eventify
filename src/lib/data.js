@@ -1,6 +1,13 @@
 import "server-only";
 import { kv } from "@/lib/kv";
 import { BASE_DRINK_ITEM_GROUPS } from "@/lib/drinkItems";
+import { parseISODate, formatISODate } from "@/lib/dates";
+import {
+  DEFAULT_CHAPTER_NAME,
+  DEFAULT_BRAND_COLORS,
+  BRAND_COLOR_VARS,
+  appTitle,
+} from "@/lib/config";
 import {
   STARTER_SEMESTER,
   STARTER_EVENTS,
@@ -14,6 +21,7 @@ const SEMESTERS_KEY = "semesters";
 const DRINK_PRESETS_KEY = "drinkPresets";
 const CUSTOM_DRINK_ITEMS_KEY = "customDrinkItems";
 const CATEGORIES_KEY = "categories";
+const BRANDING_KEY = "branding";
 const eventsKey = (semesterId) => `events:${semesterId}`;
 const gameDaysKey = (semesterId) => `gamedays:${semesterId}`;
 const contactsKey = (semesterId) => `contacts:${semesterId}`;
@@ -22,12 +30,12 @@ const contactsKey = (semesterId) => `contacts:${semesterId}`;
 // specific semester's budget.
 const EQUIPMENT_KEY = "equipment";
 
-// Set once ensureSeeded() has confirmed (and, if needed, performed) seeding
-// on this warm instance, so later requests on the same instance skip the
-// backfill-check reads instead of re-probing Redis every request forever.
+// Set once ensureDefaults() has confirmed (and, if needed, performed) the
+// default backfill on this warm instance, so later requests on the same
+// instance skip those reads instead of re-probing Redis every request forever.
 let seeded = false;
 
-// Every page load calls ensureSeeded() -> getSemesters(), which is otherwise
+// Every page load calls ensureDefaults() -> getSemesters(), which is otherwise
 // a full Redis round trip for a value that changes maybe once a semester.
 // This in-process cache turns repeat reads on a warm instance into memory
 // hits; the short TTL bounds staleness across instances/restarts, and writes
@@ -52,6 +60,15 @@ export async function getSemesters() {
   return cached(SEMESTERS_KEY, async () => (await kv.get(SEMESTERS_KEY)) ?? []);
 }
 
+// Bypasses the 60s cache. Only for the first-run setup guard: a cached empty
+// list would let two officers setting up at the same moment each create a
+// "first" semester, and setup runs once so the extra round trip is free.
+export async function getSemestersFresh() {
+  const semesters = (await kv.get(SEMESTERS_KEY)) ?? [];
+  cache.set(SEMESTERS_KEY, { value: semesters, expiresAt: Date.now() + CACHE_TTL_MS });
+  return semesters;
+}
+
 export async function getSemester(id) {
   const semesters = await getSemesters();
   return semesters.find((s) => s.id === id);
@@ -67,6 +84,66 @@ export async function saveSemester(semester) {
   }
   await kv.set(SEMESTERS_KEY, semesters);
   invalidateCache(SEMESTERS_KEY);
+}
+
+// Removes `id` from the semesters list in one atomic Redis-side operation,
+// refusing (without writing) if that would leave the list empty.
+//
+// This is the one place in the app that genuinely needs a Lua script instead
+// of the read-then-write pattern used everywhere else: a plain "read the
+// list, check the length, write the filtered list" has a real race between
+// the read and the write. Two officers deleting two *different* semesters at
+// nearly the same moment can each read the same 2-item list before either
+// write lands, each compute a valid-looking 1-item remainder, and both
+// proceed — verified live while building this fix (a JS-level fresh-read
+// re-check narrowed the window but did not close it; two backgrounded curl
+// requests reproduced both semesters' events/gameDays/contacts being wiped
+// while the semester list itself still showed one "surviving" entry with no
+// data underneath). A single EVAL runs atomically against Redis — no other
+// command can interleave with it — so it's the only way to make the guard
+// and the write indivisible without a much larger storage-model change.
+const DELETE_SEMESTER_SCRIPT = `
+local raw = redis.call('GET', KEYS[1])
+local semesters = raw and cjson.decode(raw) or {}
+local remaining = {}
+for _, s in ipairs(semesters) do
+  if s.id ~= ARGV[1] then
+    table.insert(remaining, s)
+  end
+end
+if #remaining == 0 then
+  return 0
+end
+redis.call('SET', KEYS[1], cjson.encode(remaining))
+return 1
+`;
+
+// Drops the semester and everything scoped to it. Equipment is global, not
+// scoped, so it isn't deleted — but an item purchased during this semester
+// has its purchasedSemesterId reset to null (back to an unattributed wishlist
+// item, visible on every semester again) rather than left pointing at a
+// semester id that no longer exists. equipmentItemsForSemester only matches
+// an item to a semester whose id it equals exactly, so a stale id there
+// isn't "harmlessly ignored" — it makes the item, and its real cost, vanish
+// from every remaining semester's budget with no way to reach it again.
+export async function deleteSemester(id) {
+  const removed = await kv.eval(DELETE_SEMESTER_SCRIPT, [SEMESTERS_KEY], [id]);
+  if (!removed) {
+    throw new Error("Cannot delete the only remaining semester.");
+  }
+  invalidateCache(SEMESTERS_KEY);
+  await kv.del(eventsKey(id), gameDaysKey(id), contactsKey(id));
+
+  const equipment = await getEquipmentItems();
+  const orphaned = equipment.filter((item) => item.purchasedSemesterId === id);
+  if (orphaned.length > 0) {
+    await kv.set(
+      EQUIPMENT_KEY,
+      equipment.map((item) =>
+        item.purchasedSemesterId === id ? { ...item, purchasedSemesterId: null } : item,
+      ),
+    );
+  }
 }
 
 export async function getEvents(semesterId) {
@@ -230,30 +307,66 @@ export async function getCalendarPageData(
   };
 }
 
-// Seeds a starter semester (with example events/game days/contacts and a
-// starter category set) on first run only — skips if any semester already
-// exists. Also returns the semester list, since every caller needs it right
-// after and would otherwise re-fetch the same key. Once this has run once on
-// a warm instance, later calls skip the backfill-check reads entirely
-// (they're a one-time migration, not a per-request concern).
-export async function ensureSeeded() {
+/**
+ * The chapter's name and colors, with anything saved on the Settings page
+ * layered over the deploy-time env defaults. Falls back per-field rather than
+ * wholesale, so a chapter that only sets a name still gets env colors.
+ */
+export async function getBrandingSettings() {
+  const saved = await cached(BRANDING_KEY, async () => (await kv.get(BRANDING_KEY)) ?? {});
+  const chapterName = saved.chapterName?.trim() || DEFAULT_CHAPTER_NAME;
+  const colors = {};
+  for (const [, key] of BRAND_COLOR_VARS) {
+    colors[key] = saved.colors?.[key] || DEFAULT_BRAND_COLORS[key] || "";
+  }
+  return { chapterName, appTitle: appTitle(chapterName), colors };
+}
+
+/**
+ * Rewrites the stored `host` on every event the chapter hosts itself, after the
+ * chapter changes its name.
+ *
+ * An event records its host as a plain string, and conflict detection decides
+ * "is this ours?" by comparing that string to the chapter name. Without this,
+ * renaming (which nearly every chapter does, since the name starts as a
+ * placeholder) would quietly orphan every event created beforehand: still on
+ * the calendar, no longer recognized as the chapter's own. Other orgs' events
+ * keep their host untouched.
+ */
+export async function renameChapterInEventHosts(previousName, chapterName) {
+  const normalize = (name) => name.trim().toLowerCase();
+  if (normalize(previousName) === normalize(chapterName)) return;
+
+  const semesters = await getSemesters();
+  for (const semester of semesters) {
+    const events = await getEvents(semester.id);
+    let changed = false;
+    const updated = events.map((event) => {
+      if (normalize(event.host) !== normalize(previousName)) return event;
+      changed = true;
+      return { ...event, host: chapterName };
+    });
+    if (changed) await kv.set(eventsKey(semester.id), updated);
+  }
+}
+
+export async function saveBrandingSettings({ chapterName, colors }) {
+  await kv.set(BRANDING_KEY, { chapterName, colors });
+  invalidateCache(BRANDING_KEY);
+}
+
+// Backfills the defaults the app can't function without — an event has to pick
+// a category from somewhere, and the Autofill tab needs presets to autofill
+// from. Deliberately does NOT create a semester: a deployment with no
+// semesters is one that hasn't been through /setup yet, and inventing a
+// fictional semester there is what used to leave new chapters stuck with a
+// hardcoded "Example Semester" they couldn't rename. Returns the semester list
+// since every caller needs it right after. Once this has run on a warm
+// instance later calls skip the backfill reads entirely.
+export async function ensureDefaults() {
   const semesters = await getSemesters();
   if (seeded) return semesters;
 
-  if (semesters.length === 0) {
-    await kv.set(SEMESTERS_KEY, [STARTER_SEMESTER]);
-    invalidateCache(SEMESTERS_KEY);
-    await kv.set(eventsKey(STARTER_SEMESTER.id), STARTER_EVENTS);
-    await kv.set(gameDaysKey(STARTER_SEMESTER.id), STARTER_GAME_DAYS);
-    await kv.set(contactsKey(STARTER_SEMESTER.id), STARTER_CONTACTS);
-    await kv.set(CATEGORIES_KEY, STARTER_CATEGORIES);
-    await kv.set(DRINK_PRESETS_KEY, DEFAULT_DRINK_PRESETS);
-    seeded = true;
-    return [STARTER_SEMESTER];
-  }
-
-  // Categories and drink presets backfill independently, in case a semester
-  // was created (e.g. by hand or from an older version) before they existed.
   if ((await kv.get(CATEGORIES_KEY)) === null) {
     await kv.set(CATEGORIES_KEY, STARTER_CATEGORIES);
     invalidateCache(CATEGORIES_KEY);
@@ -266,4 +379,55 @@ export async function ensureSeeded() {
 
   seeded = true;
   return semesters;
+}
+
+/**
+ * Fills a freshly created semester with the example events, game days, and
+ * contacts, for a chapter that picked "show me an example" at setup.
+ *
+ * Each example date's offset from the canned semester's start is scaled by
+ * the ratio of the real semester's span to the canned one's (~110 days),
+ * then applied to the real semester's start — not just shifted by a fixed
+ * number of days. A fixed shift keeps every event's distance-from-start
+ * identical, so a chapter with a much shorter term (a 3-week winter rush,
+ * say) would get examples scattered for months past their own semester's end
+ * date. Scaling keeps every example within the chapter's actual start/end,
+ * compressed or stretched to fit, and preserves each event's relative order.
+ */
+export async function seedExampleData(semester) {
+  const { chapterName } = await getBrandingSettings();
+  const starterStart = parseISODate(STARTER_SEMESTER.startDate).getTime();
+  const starterSpanMs = parseISODate(STARTER_SEMESTER.endDate).getTime() - starterStart;
+  const newStart = parseISODate(semester.startDate).getTime();
+  const newSpanMs = parseISODate(semester.endDate).getTime() - newStart;
+  const scale = newSpanMs / starterSpanMs;
+  const shift = (iso) =>
+    formatISODate(new Date(newStart + Math.round((parseISODate(iso).getTime() - starterStart) * scale)));
+
+  const events = STARTER_EVENTS.map((e) => ({
+    ...e,
+    semesterId: semester.id,
+    // Canned events authored as the chapter's own keep that ownership under
+    // whatever the chapter is actually called, so conflict detection still
+    // recognizes them; another org's example event keeps its own host.
+    host: e.host === DEFAULT_CHAPTER_NAME ? chapterName : e.host,
+    startDate: shift(e.startDate),
+    endDate: shift(e.endDate),
+  }));
+  const gameDays = STARTER_GAME_DAYS.map((g) => ({
+    ...g,
+    semesterId: semester.id,
+    date: shift(g.date),
+  }));
+  const contacts = STARTER_CONTACTS.map((c) => ({
+    ...c,
+    semesterId: semester.id,
+    meetingDate: c.meetingDate ? shift(c.meetingDate) : null,
+  }));
+
+  await Promise.all([
+    kv.set(eventsKey(semester.id), events),
+    kv.set(gameDaysKey(semester.id), gameDays),
+    kv.set(contactsKey(semester.id), contacts),
+  ]);
 }

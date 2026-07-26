@@ -1,8 +1,9 @@
-import { ensureSeeded, getCategories } from "@/lib/data";
+import { getCategories } from "@/lib/data";
+import { requireSemesters } from "@/lib/setup";
 import { CategoriesEditor } from "@/components/CategoriesEditor";
 
 export default async function CategoriesPage() {
-  await ensureSeeded();
+  await requireSemesters();
   const categories = await getCategories();
 
   return (

@@ -1,17 +1,27 @@
-// The one place a chapter names itself. Set NEXT_PUBLIC_CHAPTER_NAME in your
-// environment; until then everything reads as a placeholder so it's obvious
-// setup isn't finished yet.
-export const CHAPTER_NAME = process.env.NEXT_PUBLIC_CHAPTER_NAME?.trim() || "Blank";
+// Deploy-time *defaults* for a chapter's branding. These are the starting
+// point, not the source of truth: whatever the chapter later saves on the
+// Settings page is stored in Redis and wins over anything here, so renaming or
+// recoloring never means a trip to the Vercel dashboard and a redeploy. See
+// getBrandingSettings() in data.js for the merge.
+export const DEFAULT_CHAPTER_NAME =
+  process.env.NEXT_PUBLIC_CHAPTER_NAME?.trim() || "Blank";
 
-export const APP_TITLE = `${CHAPTER_NAME} Social Calendar`;
+export const appTitle = (chapterName) => `${chapterName} Social Calendar`;
 
-// Optional per-deployment brand color overrides. Unset by default, so every
-// deployment gets the same generic palette from globals.css until a chapter
-// sets these — lets one shared codebase serve both the public template and a
-// chapter's own real, branded instance without the two fighting over defaults.
-export const BRAND_COLOR_OVERRIDES = {
-  "--color-brand-primary": process.env.NEXT_PUBLIC_BRAND_PRIMARY,
-  "--color-brand-accent": process.env.NEXT_PUBLIC_BRAND_ACCENT,
-  "--color-brand-accent-deep": process.env.NEXT_PUBLIC_BRAND_ACCENT_DEEP,
-  "--color-brand-ink": process.env.NEXT_PUBLIC_BRAND_INK,
+// Unset by default, so every deployment gets the generic palette from
+// globals.css until a chapter picks its own — one shared codebase serves both
+// the public template and a chapter's branded instance without the two
+// fighting over defaults.
+export const BRAND_COLOR_VARS = [
+  ["--color-brand-primary", "primary", "Primary"],
+  ["--color-brand-accent", "accent", "Accent"],
+  ["--color-brand-accent-deep", "accentDeep", "Accent (deep)"],
+  ["--color-brand-ink", "ink", "Text"],
+];
+
+export const DEFAULT_BRAND_COLORS = {
+  primary: process.env.NEXT_PUBLIC_BRAND_PRIMARY,
+  accent: process.env.NEXT_PUBLIC_BRAND_ACCENT,
+  accentDeep: process.env.NEXT_PUBLIC_BRAND_ACCENT_DEEP,
+  ink: process.env.NEXT_PUBLIC_BRAND_INK,
 };

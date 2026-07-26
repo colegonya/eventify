@@ -1,9 +1,10 @@
-import { ensureSeeded, getEvents, getCategories } from "@/lib/data";
+import { getEvents, getCategories, getBrandingSettings } from "@/lib/data";
+import { requireSemesters } from "@/lib/setup";
 import { buildICS } from "@/lib/ics";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  const semesters = await ensureSeeded();
+  const semesters = await requireSemesters();
   const semester =
     semesters.find((s) => s.id === searchParams.get("semester")) ?? semesters[0];
 
@@ -11,12 +12,13 @@ export async function GET(request) {
     return new Response("No semester found", { status: 404 });
   }
 
-  const [events, categories] = await Promise.all([
+  const [events, categories, { chapterName }] = await Promise.all([
     getEvents(semester.id),
     getCategories(),
+    getBrandingSettings(),
   ]);
   const categoriesById = new Map(categories.map((c) => [c.id, c]));
-  const ics = buildICS(events, semester.label, categoriesById);
+  const ics = buildICS(events, semester.label, categoriesById, chapterName);
 
   return new Response(ics, {
     headers: {

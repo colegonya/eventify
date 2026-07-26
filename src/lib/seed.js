@@ -1,9 +1,12 @@
-import { CHAPTER_NAME } from "@/lib/config";
+import { DEFAULT_CHAPTER_NAME } from "@/lib/config";
 
-// First-run example data only — every value here is fictional. It seeds an
-// empty deployment so the app isn't a blank page on first load; edit or
-// delete all of it from the Calendar/Contacts/Categories tabs once you're
-// running your own chapter's data. See ensureSeeded() in data.ts.
+// Example data only — every value here is fictional. It's written to a new
+// deployment only if the chapter asks for it at /setup, so they can look
+// around a populated app before committing; edit or delete all of it from the
+// Calendar/Contacts/Categories tabs whenever. The category set and drink
+// presets below are different: those are real defaults every deployment gets,
+// since an event has to pick a category from somewhere. See ensureDefaults()
+// and seedExampleData() in data.js.
 
 export const STARTER_SEMESTER = {
   id: "example-semester",
@@ -38,7 +41,7 @@ function event(
 ) {
   return {
     semesterId: "example-semester",
-    host: CHAPTER_NAME,
+    host: DEFAULT_CHAPTER_NAME,
     endDate: overrides.startDate,
     startTime: null,
     endTime: null,

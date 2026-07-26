@@ -1,4 +1,5 @@
-import { ensureSeeded, getContacts } from "@/lib/data";
+import { getContacts } from "@/lib/data";
+import { requireSemesters } from "@/lib/setup";
 import { SemesterSwitcher } from "@/components/SemesterSwitcher";
 import { ContactsTable } from "@/components/ContactsTable";
 
@@ -6,7 +7,7 @@ export default async function ContactsPage({
   searchParams,
 }) {
   const params = await searchParams;
-  const semesters = await ensureSeeded();
+  const semesters = await requireSemesters();
 
   if (semesters.length === 0) {
     return (

@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import { NavTabs } from "@/components/NavTabs";
-import { APP_TITLE, BRAND_COLOR_OVERRIDES } from "@/lib/config";
+import { BRAND_COLOR_VARS } from "@/lib/config";
+import { getBrandingSettings } from "@/lib/data";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,15 +14,21 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata = {
-  title: APP_TITLE,
-  description: `${APP_TITLE} and budget tracker`,
-};
+export async function generateMetadata() {
+  const { appTitle } = await getBrandingSettings();
+  return {
+    title: appTitle,
+    description: `${appTitle} and budget tracker`,
+  };
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }) {
-  const brandOverrides = Object.entries(BRAND_COLOR_OVERRIDES).filter(([, value]) => value);
+  const { appTitle, colors } = await getBrandingSettings();
+  const brandOverrides = BRAND_COLOR_VARS.filter(([, key]) => colors[key]).map(
+    ([cssVar, key]) => [cssVar, colors[key]],
+  );
 
   return (
     <html
@@ -38,10 +45,10 @@ export default function RootLayout({
               keeps the page's accessible <h1> in the a11y tree there. On md+
               it's removed and the visible <h1> below takes over, so exactly
               one <h1> is present at any breakpoint. */}
-          <h1 className="sr-only md:hidden">{APP_TITLE}</h1>
+          <h1 className="sr-only md:hidden">{appTitle}</h1>
           <div className="hidden items-center px-4 pt-3 md:flex md:px-6">
             <h1 className="text-base font-semibold tracking-tight text-brand-ink md:text-lg">
-              {APP_TITLE}
+              {appTitle}
             </h1>
           </div>
           <NavTabs />

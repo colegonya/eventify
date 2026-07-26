@@ -25,6 +25,7 @@ export function useEditor() {
 
 export function EditorProvider({
   events,
+  chapterName,
   semesterId,
   maxBudgetCents,
   month,
@@ -176,6 +177,7 @@ export function EditorProvider({
             <EventForm
               key={eventId ?? "new"}
               semesterId={semesterId}
+              chapterName={chapterName}
               event={editingEvent}
               defaultDate={date ?? `${month}-01`}
               maxBudgetCents={maxBudgetCents}

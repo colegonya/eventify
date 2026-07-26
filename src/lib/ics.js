@@ -1,4 +1,3 @@
-import { CHAPTER_NAME } from "@/lib/config";
 import {
   addDays,
   parseISODate,
@@ -52,6 +51,7 @@ export function buildICS(
   events,
   semesterLabel,
   categoriesById,
+  chapterName,
 ) {
   const hostEvents = events.filter((e) => !categoriesById.get(e.category)?.isOtherOrgCategory);
   const now = utcDateTimeStamp(new Date());
@@ -59,9 +59,9 @@ export function buildICS(
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    `PRODID:-//${CHAPTER_NAME} Social Calendar//EN`,
+    `PRODID:-//${chapterName} Social Calendar//EN`,
     "CALSCALE:GREGORIAN",
-    `X-WR-CALNAME:${escapeText(`${CHAPTER_NAME} Events - ${semesterLabel}`)}`,
+    `X-WR-CALNAME:${escapeText(`${chapterName} Events - ${semesterLabel}`)}`,
   ];
 
   for (const event of hostEvents) {
@@ -74,6 +74,17 @@ export function buildICS(
       let endStamp;
       if (event.endTime) {
         endStamp = `${dateStamp(event.endDate)}T${timeStamp(event.endTime)}`;
+        // An explicit end time at or before the start time on the same date
+        // means the event runs past midnight (22:00-00:00, say), not
+        // backwards. Roll DTEND forward a day so it's never before DTSTART --
+        // real calendar clients can reject or badly mis-render a
+        // negative-duration VEVENT on import. The zero-padded stamp format
+        // sorts lexicographically the same as chronologically, so a plain
+        // string comparison is enough to detect it.
+        if (endStamp <= startStamp) {
+          const rolledEndDate = formatISODate(addDays(parseISODate(event.endDate), 1));
+          endStamp = `${dateStamp(rolledEndDate)}T${timeStamp(event.endTime)}`;
+        }
       } else {
         const end = addMinutesToDateTime(event.startDate, event.startTime, DEFAULT_DURATION_MINUTES);
         endStamp = `${dateStamp(end.date)}T${end.time}`;

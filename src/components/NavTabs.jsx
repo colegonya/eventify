@@ -9,6 +9,7 @@ const TABS = [
   { href: "/contacts", label: "Contacts" },
   { href: "/categories", label: "Categories" },
   { href: "/autofill", label: "Autofill" },
+  { href: "/settings", label: "Settings" },
 ];
 
 export function NavTabs() {

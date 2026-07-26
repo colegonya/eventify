@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { AUTH_COOKIE_NAME, expectedAuthCookieValue } from "@/lib/auth";
 
-export function proxy(request) {
+export async function proxy(request) {
   const cookie = request.cookies.get(AUTH_COOKIE_NAME);
-  if (cookie?.value === expectedAuthCookieValue()) {
+  if (cookie?.value === (await expectedAuthCookieValue())) {
     return NextResponse.next();
   }
 

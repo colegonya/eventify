@@ -8,7 +8,14 @@ import {
   deleteEvent as deleteEventRecord,
   getEvents,
   getSemester,
+  getSemesters,
+  getSemestersFresh,
+  getBrandingSettings,
+  saveBrandingSettings,
+  renameChapterInEventHosts,
   saveSemester,
+  deleteSemester as deleteSemesterRecord,
+  seedExampleData,
   saveContacts,
   saveDrinkPresets,
   getDrinkItemGroups,
@@ -18,30 +25,59 @@ import {
   saveEquipmentItem,
   deleteEquipmentItem as deleteEquipmentItemRecord,
   saveCategories,
+  getCategories,
 } from "@/lib/data";
 import { parseISODate, formatISODate, addDays } from "@/lib/dates";
-import { AUTH_COOKIE_NAME, expectedAuthCookieValue, isValidPasscode } from "@/lib/auth";
-import { CHAPTER_NAME } from "@/lib/config";
+import {
+  AUTH_COOKIE_NAME,
+  expectedAuthCookieValue,
+  isValidPasscode,
+  setPasscode,
+  MIN_PASSCODE_LENGTH,
+} from "@/lib/auth";
 import { GROUP_LABELS } from "@/lib/drinkItems";
+import { BRAND_COLOR_VARS } from "@/lib/config";
+
+const AUTH_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  path: "/",
+  maxAge: 60 * 60 * 24 * 180,
+};
 
 export async function loginAction(formData) {
   const passcode = String(formData.get("passcode") ?? "");
   const next = String(formData.get("next") ?? "/calendar");
 
-  if (!isValidPasscode(passcode)) {
+  if (!(await isValidPasscode(passcode))) {
     redirect(`/login?next=${encodeURIComponent(next)}&error=1`);
   }
 
   const cookieStore = await cookies();
-  cookieStore.set(AUTH_COOKIE_NAME, expectedAuthCookieValue(), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 180,
-  });
+  cookieStore.set(AUTH_COOKIE_NAME, await expectedAuthCookieValue(), AUTH_COOKIE_OPTIONS);
 
   redirect(next);
+}
+
+/**
+ * Rotates the shared passcode. Every other logged-in browser is signed out,
+ * since their cookie holds the old hash — which is exactly what you want after
+ * exec turnover or a leak. The officer doing the rotating gets a fresh cookie
+ * so they aren't kicked out of the page they're standing on.
+ */
+export async function updatePasscodeAction(formData) {
+  const passcode = String(formData.get("passcode") ?? "");
+  const confirmation = String(formData.get("passcodeConfirm") ?? "");
+
+  if (passcode.length < MIN_PASSCODE_LENGTH) redirect("/settings?error=passcodeShort");
+  if (passcode !== confirmation) redirect("/settings?error=passcodeMismatch");
+
+  const value = await setPasscode(passcode);
+  const cookieStore = await cookies();
+  cookieStore.set(AUTH_COOKIE_NAME, value, AUTH_COOKIE_OPTIONS);
+
+  redirect("/settings?saved=passcode");
 }
 
 function parseDollarsToCents(value) {
@@ -75,12 +111,33 @@ export async function saveEventAction(formData) {
   }
   const hostShareFractionRaw = String(formData.get("hostShareFraction") ?? "").trim();
 
+  const category = String(formData.get("category") ?? "");
+  const [categories, { chapterName }] = await Promise.all([getCategories(), getBrandingSettings()]);
+  const matchedCategory = categories.find((c) => c.id === category);
+
+  // The host field is read-only in the UI for every category except "other
+  // org" ones — for the chapter's own events, host is always meant to be the
+  // chapter itself, not something an officer picks. A readOnly input still
+  // submits its current value (unlike disabled), so a form left open across
+  // a chapter rename in another tab could submit a stale name. Resolve it
+  // fresh instead of trusting the client — but only once the category is
+  // positively confirmed to NOT be an other-org one. Categories are global
+  // and can be deleted at any time; if this event's category no longer
+  // exists (deleted after the form loaded, or a bad id), we can't tell which
+  // kind it was meant to be, so fall back to trusting the submitted host
+  // rather than guessing "not other-org" and silently overwriting a real
+  // custom host with the chapter's own name.
+  const host =
+    matchedCategory && !matchedCategory.isOtherOrgCategory
+      ? chapterName
+      : String(formData.get("host") ?? "").trim() || chapterName;
+
   const event = {
     id,
     semesterId,
     name: String(formData.get("name") ?? "").trim(),
-    category: String(formData.get("category") ?? ""),
-    host: String(formData.get("host") ?? "").trim() || CHAPTER_NAME,
+    category,
+    host,
     startDate,
     endDate,
     startTime: (formData.get("startTime")) || null,
@@ -267,6 +324,156 @@ export async function saveEquipmentAction(formData) {
 export async function deleteEquipmentAction(id) {
   await deleteEquipmentItemRecord(id);
   revalidatePath("/budget");
+}
+
+// Semester ids show up in URLs (?semester=...) and Redis keys, so they're
+// slugs of the label rather than UUIDs — easier to read when something needs
+// debugging. Uniqueness is enforced against the existing list, since two
+// semesters sharing an id would share their events.
+function semesterIdFromLabel(label, existingIds) {
+  const base =
+    label
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "") || "semester";
+  if (!existingIds.has(base)) return base;
+  let n = 2;
+  while (existingIds.has(`${base}-${n}`)) n++;
+  return `${base}-${n}`;
+}
+
+// Returns an error code instead of throwing: Next redacts thrown server-action
+// messages in production, so a throw would show the exec board a generic
+// "something went wrong" instead of what they actually got wrong. The caller
+// redirects back with ?error=<code>, the same pattern loginAction uses.
+function parseSemesterFields(formData) {
+  const label = String(formData.get("label") ?? "").trim();
+  const startDate = String(formData.get("startDate") ?? "").trim();
+  const endDate = String(formData.get("endDate") ?? "").trim();
+
+  if (!label) return { error: "name" };
+  if (!startDate || !endDate) return { error: "dates" };
+  if (endDate < startDate) return { error: "order" };
+
+  return {
+    fields: {
+      label,
+      startDate,
+      endDate,
+      maxBudgetCents: parseDollarsToCents(formData.get("maxBudget")) ?? 0,
+    },
+  };
+}
+
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+
+export async function saveBrandingAction(formData) {
+  const chapterName = String(formData.get("chapterName") ?? "").trim();
+  if (!chapterName) redirect("/settings?error=chapterName");
+
+  // Blank means "fall back to the default palette", so empty is allowed
+  // through; anything present has to be a real hex color, since these values
+  // land in a <style> tag.
+  const colors = {};
+  for (const [, key] of BRAND_COLOR_VARS) {
+    const value = String(formData.get(`color-${key}`) ?? "").trim();
+    if (value && !HEX_COLOR.test(value)) redirect("/settings?error=color");
+    colors[key] = value;
+  }
+
+  const { chapterName: previousName } = await getBrandingSettings();
+  await saveBrandingSettings({ chapterName, colors });
+  await renameChapterInEventHosts(previousName, chapterName);
+
+  revalidatePath("/", "layout");
+  redirect("/settings");
+}
+
+/**
+ * First-run setup: turns an empty deployment into a usable one. Refuses to run
+ * a second time so a stray /setup visit can't overwrite a chapter's real work
+ * with example data.
+ */
+export async function completeSetupAction(formData) {
+  const existing = await getSemestersFresh();
+  if (existing.length > 0) redirect("/calendar");
+
+  const chapterName = String(formData.get("chapterName") ?? "").trim();
+  if (!chapterName) redirect("/setup?error=chapterName");
+
+  const { fields, error } = parseSemesterFields(formData);
+  if (error) redirect(`/setup?error=${error}`);
+
+  // Branding first, so example data (whose host defaults to the chapter) is
+  // written under the name they just chose rather than the placeholder.
+  // Colors are saved blank — setup has no color fields, so persisting
+  // getBrandingSettings()'s env-resolved values here would freeze whatever
+  // NEXT_PUBLIC_BRAND_* happened to be set at deploy time as if the chapter
+  // had deliberately chosen it on the Settings page, permanently shadowing
+  // any later change to that env var. Blank defers to the env default until
+  // the chapter actually saves a color themselves.
+  await saveBrandingSettings({ chapterName, colors: {} });
+
+  const semester = { id: semesterIdFromLabel(fields.label, new Set()), ...fields };
+  await saveSemester(semester);
+  if (formData.get("exampleData")) {
+    await seedExampleData(semester);
+  }
+
+  revalidatePath("/", "layout");
+  redirect(`/calendar?semester=${semester.id}`);
+}
+
+export async function createSemesterAction(formData) {
+  const { fields, error } = parseSemesterFields(formData);
+  if (error) redirect(`/settings?error=${error}`);
+
+  const semesters = await getSemesters();
+  const id = semesterIdFromLabel(fields.label, new Set(semesters.map((s) => s.id)));
+
+  await saveSemester({ id, ...fields });
+  revalidatePath("/calendar");
+  revalidatePath("/budget");
+  revalidatePath("/settings");
+  redirect(`/calendar?semester=${id}`);
+}
+
+export async function updateSemesterAction(formData) {
+  const id = String(formData.get("semesterId"));
+  const { fields, error } = parseSemesterFields(formData);
+  if (error) redirect(`/settings?error=${error}`);
+
+  const semester = await getSemester(id);
+  if (!semester) redirect("/settings");
+
+  await saveSemester({ ...semester, ...fields });
+  revalidatePath("/calendar");
+  revalidatePath("/budget");
+  redirect("/settings");
+}
+
+export async function deleteSemesterAction(formData) {
+  const id = String(formData.get("semesterId"));
+  const semesters = await getSemesters();
+
+  // Fast, friendly early exit for the common case — avoids an extra Redis
+  // round trip when this is obviously the only semester. The real guard
+  // (safe against two nearly-simultaneous deletes) lives in deleteSemester
+  // itself, which re-checks against a fresh read rather than trusting this
+  // cached one.
+  if (semesters.length <= 1) redirect("/settings?error=last");
+
+  let deleted = true;
+  try {
+    await deleteSemesterRecord(id);
+  } catch {
+    deleted = false;
+  }
+  if (!deleted) redirect("/settings?error=last");
+
+  revalidatePath("/calendar");
+  revalidatePath("/budget");
+  redirect("/settings");
 }
 
 export async function updateMaxBudgetAction(formData) {

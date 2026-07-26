@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ensureSeeded, getEvents, getEquipmentItems, getCategories } from "@/lib/data";
+import { getEvents, getEquipmentItems, getCategories } from "@/lib/data";
+import { requireSemesters } from "@/lib/setup";
 import {
   computeSemesterBudget,
   computeAlerts,
@@ -20,7 +21,7 @@ export default async function BudgetPage({
   searchParams,
 }) {
   const params = await searchParams;
-  const semesters = await ensureSeeded();
+  const semesters = await requireSemesters();
 
   if (semesters.length === 0) {
     return (

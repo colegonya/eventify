@@ -1,5 +1,4 @@
 import { eventDatesInRange, DEFAULT_DURATION_MINUTES } from "@/lib/dates";
-import { CHAPTER_NAME } from "@/lib/config";
 
 function timeToMinutes(time) {
   const [hours, minutes] = time.split(":").map(Number);
@@ -12,14 +11,21 @@ function eventInterval(
   // Day-only events (no start time) skip the time-overlap check entirely.
   if (!event.startTime) return null;
   const start = timeToMinutes(event.startTime);
-  const end = event.endTime
+  let end = event.endTime
     ? timeToMinutes(event.endTime)
     : start + DEFAULT_DURATION_MINUTES;
+  // An explicit end time at or before the start time means the event runs
+  // past midnight (22:00-00:00, say), not backwards — roll it into the next
+  // day so the overlap check still works, matching how the no-end-time
+  // default-duration case above can already exceed a day's 1440 minutes.
+  if (event.endTime && end <= start) {
+    end += 24 * 60;
+  }
   return { start, end };
 }
 
-function isHostChapterEvent(event) {
-  return event.host.trim().toLowerCase() === CHAPTER_NAME.trim().toLowerCase();
+function isHostChapterEvent(event, chapterName) {
+  return event.host.trim().toLowerCase() === chapterName.trim().toLowerCase();
 }
 
 function intervalsOverlap(
@@ -32,9 +38,11 @@ function intervalsOverlap(
 /**
  * Computes same-day time-overlap conflicts.
  * Game days are excluded by construction — they're never in `events`.
+ * `chapterName` decides which events count as the chapter's own.
  */
 export function computeConflicts(
   events,
+  chapterName,
 ) {
   const byDate = new Map();
   for (const event of events) {
@@ -63,8 +71,8 @@ export function computeConflicts(
         if (!intervalA || !intervalB) continue;
         if (!intervalsOverlap(intervalA, intervalB)) continue;
 
-        const aHost = isHostChapterEvent(a);
-        const bHost = isHostChapterEvent(b);
+        const aHost = isHostChapterEvent(a, chapterName);
+        const bHost = isHostChapterEvent(b, chapterName);
         // Only the host chapter's own events generate conflicts.
         if (!aHost && !bHost) continue;
 

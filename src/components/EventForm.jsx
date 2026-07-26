@@ -10,7 +10,6 @@ import {
 } from "@/lib/budget";
 import { DEFAULT_DURATION_MINUTES } from "@/lib/dates";
 import { DrinkCalculator } from "@/components/DrinkCalculator";
-import { CHAPTER_NAME } from "@/lib/config";
 
 function centsToDollarsInput(cents) {
   return cents === null ? "" : (cents / 100).toFixed(2);
@@ -25,6 +24,7 @@ let nextLineItemKey = 0;
 
 export function EventForm({
   semesterId,
+  chapterName,
   event,
   defaultDate,
   maxBudgetCents,
@@ -49,7 +49,7 @@ export function EventForm({
   const [categoryId, setCategoryId] = useState(
     event?.category ?? categories[0]?.id ?? "",
   );
-  const [host, setHost] = useState(event?.host ?? CHAPTER_NAME);
+  const [host, setHost] = useState(event?.host ?? chapterName);
   const [expectedSpendInput, setExpectedSpendInput] = useState(
     centsToDollarsInput(event?.expectedSpendCents ?? null),
   );
@@ -188,9 +188,9 @@ export function EventForm({
                 // Host only means anything for another org's category (whose
                 // org hosted it). Keep it in sync so it can't silently go stale.
                 if (nextCategory?.isOtherOrgCategory) {
-                  if (host === CHAPTER_NAME) setHost("");
+                  if (host === chapterName) setHost("");
                 } else {
-                  setHost(CHAPTER_NAME);
+                  setHost(chapterName);
                 }
               }}
               className={input}

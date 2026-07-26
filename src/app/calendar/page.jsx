@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ensureSeeded, getCalendarPageData } from "@/lib/data";
+import { getCalendarPageData, getBrandingSettings } from "@/lib/data";
+import { requireSemesters } from "@/lib/setup";
 import { computeConflicts } from "@/lib/conflicts";
 import { computeCategorySpendStats, computeEquipmentContribution } from "@/lib/budget";
 import { equipmentItemsForSemester } from "@/lib/equipment";
@@ -30,7 +31,7 @@ export default async function CalendarPage({
   searchParams,
 }) {
   const params = await searchParams;
-  const semesters = await ensureSeeded();
+  const semesters = await requireSemesters();
 
   if (semesters.length === 0) {
     return (
@@ -52,11 +53,16 @@ export default async function CalendarPage({
   const defaultMonth = todayIso >= nearStartIso ? todayIso.slice(0, 7) : semester.startDate.slice(0, 7);
   const month = params.month ?? defaultMonth;
 
-  const { events, gameDays, allEvents, drinkPresets, drinkItemGroups, equipmentItems, categories } =
-    await getCalendarPageData(
+  const [
+    { events, gameDays, allEvents, drinkPresets, drinkItemGroups, equipmentItems, categories },
+    { chapterName },
+  ] = await Promise.all([
+    getCalendarPageData(
       semester.id,
       semesters.map((s) => s.id),
-    );
+    ),
+    getBrandingSettings(),
+  ]);
   const categoriesById = new Map(categories.map((c) => [c.id, c]));
   const categorySpendStats = Object.fromEntries(computeCategorySpendStats(allEvents));
 
@@ -65,7 +71,7 @@ export default async function CalendarPage({
     0,
   );
 
-  const conflicts = computeConflicts(events);
+  const conflicts = computeConflicts(events, chapterName);
 
   const eventsByDate = new Map();
   for (const event of events) {
@@ -164,6 +170,7 @@ export default async function CalendarPage({
   return (
     <EditorProvider
       events={events}
+      chapterName={chapterName}
       semesterId={semester.id}
       maxBudgetCents={semester.maxBudgetCents}
       month={month}

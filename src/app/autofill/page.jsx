@@ -1,9 +1,10 @@
-import { ensureSeeded, getDrinkPresets, getCustomDrinkItems, mergeDrinkItemGroups, getCategories } from "@/lib/data";
+import { getDrinkPresets, getCustomDrinkItems, mergeDrinkItemGroups, getCategories } from "@/lib/data";
+import { requireSemesters } from "@/lib/setup";
 import { DrinkPresetsEditor } from "@/components/DrinkPresetsEditor";
 import { CustomDrinkItemsEditor } from "@/components/CustomDrinkItemsEditor";
 
 export default async function AutofillPage() {
-  await ensureSeeded();
+  await requireSemesters();
   const [presets, customItems, categories] = await Promise.all([
     getDrinkPresets(),
     getCustomDrinkItems(),
