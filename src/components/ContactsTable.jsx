@@ -22,7 +22,7 @@ export function ContactsTable({
 }) {
   const [isPending, startTransition] = useTransition();
   const [rows, setRows] = useState(() =>
-    contacts.map((c) => ({ key: `existing-${c.id}`, ...c })),
+    contacts.map((c) => ({ key: `existing-${c.id}`, ...c, orgGroup: c.org })),
   );
   const [saved, setSaved] = useState(false);
   const formRef = useRef(null);
@@ -64,6 +64,7 @@ export function ContactsTable({
         id: crypto.randomUUID(),
         semesterId,
         org: "",
+        orgGroup: "",
         position: "",
         status: "Not Reached Out",
         phone: "",
@@ -80,11 +81,13 @@ export function ContactsTable({
   // Contacts are grouped by their own free-text org name — chapters aren't
   // limited to a fixed list of sororities/orgs, they name their own groups
   // just by typing one in. Order follows first appearance so cards don't
-  // jump around while someone is mid-edit.
+  // jump around while someone is mid-edit. Grouping uses orgGroup (committed
+  // on blur) rather than the live org value, otherwise every keystroke moves
+  // the row into a new group card and unmounts the input mid-type.
   const groupOrder = [];
   const groups = new Map();
   for (const row of rows) {
-    const org = row.org.trim() || UNGROUPED;
+    const org = row.orgGroup.trim() || UNGROUPED;
     if (!groups.has(org)) {
       groupOrder.push(org);
       groups.set(org, []);
@@ -129,6 +132,12 @@ export function ContactsTable({
                         onChange={(e) => {
                           const org = e.target.value;
                           setRows((rs) => rs.map((r) => (r.key === row.key ? { ...r, org } : r)));
+                        }}
+                        onBlur={(e) => {
+                          const orgGroup = e.target.value;
+                          setRows((rs) =>
+                            rs.map((r) => (r.key === row.key ? { ...r, orgGroup } : r)),
+                          );
                         }}
                         placeholder="Org, e.g. a sorority or partner org"
                         className={`flex-1 ${input}`}
