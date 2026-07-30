@@ -41,7 +41,7 @@ export default async function SettingsPage({ searchParams }) {
   const errorMessage = ERROR_MESSAGES[params?.error];
   const savedPasscode = params?.saved === "passcode";
   const semesters = await requireSemesters();
-  const { chapterName, colors } = await getBrandingSettings();
+  const { chapterName, colors, appTitle } = await getBrandingSettings();
   const sorted = [...semesters].sort((a, b) => a.startDate.localeCompare(b.startDate));
 
   return (
@@ -79,7 +79,7 @@ export default async function SettingsPage({ searchParams }) {
               className={fieldClass}
             />
             <span className="font-normal text-brand-ink/60">
-              Shows up as &ldquo;{chapterName} Social Calendar&rdquo;.
+              Shows up as &ldquo;{appTitle}&rdquo;.
             </span>
           </label>
 

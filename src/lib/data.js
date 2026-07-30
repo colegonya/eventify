@@ -22,6 +22,7 @@ const DRINK_PRESETS_KEY = "drinkPresets";
 const CUSTOM_DRINK_ITEMS_KEY = "customDrinkItems";
 const CATEGORIES_KEY = "categories";
 const BRANDING_KEY = "branding";
+const ONBOARDING_KEY = "onboardingChecklistDismissed";
 const eventsKey = (semesterId) => `events:${semesterId}`;
 const gameDaysKey = (semesterId) => `gamedays:${semesterId}`;
 const contactsKey = (semesterId) => `contacts:${semesterId}`;
@@ -353,6 +354,23 @@ export async function renameChapterInEventHosts(previousName, chapterName) {
 export async function saveBrandingSettings({ chapterName, colors }) {
   await kv.set(BRANDING_KEY, { chapterName, colors });
   invalidateCache(BRANDING_KEY);
+}
+
+// Whether the "get the most out of your calendar" checklist on the Calendar
+// tab has been dismissed. One shared flag for the whole chapter, not
+// per-browser — there's no per-user login here, so "dismissed" should mean
+// dismissed for everyone, the same way every other setting in this app is
+// shared rather than personal. Absent key (a deployment that hasn't touched
+// this yet) defaults to false, i.e. still shown — including on chapters that
+// finished setup before this existed, since the content is generically
+// useful and dismissing it is one click.
+export async function isOnboardingChecklistDismissed() {
+  return cached(ONBOARDING_KEY, async () => (await kv.get(ONBOARDING_KEY)) ?? false);
+}
+
+export async function dismissOnboardingChecklist() {
+  await kv.set(ONBOARDING_KEY, true);
+  invalidateCache(ONBOARDING_KEY);
 }
 
 // Backfills the defaults the app can't function without — an event has to pick

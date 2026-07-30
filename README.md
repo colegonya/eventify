@@ -17,12 +17,12 @@ A shared social calendar and budget tracker for a fraternity or sorority's exec 
 
 You don't need to write code or open a terminal for this. Grab two free accounts, [GitHub](https://github.com/signup) and [Vercel](https://vercel.com/signup), and you're set. Vercel lets you sign up with GitHub in one click, so this takes about thirty seconds.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fcolegonya%2Fgreek-social-calendar&env=NEXT_PUBLIC_CHAPTER_NAME,SITE_PASSCODE&envDescription=Your%20chapter%20name%20and%20a%20shared%20login%20passcode%20for%20your%20exec%20board.&envLink=https%3A%2F%2Fgithub.com%2Fcolegonya%2Fgreek-social-calendar%23environment-variables)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fcolegonya%2Fgreek-social-calendar&env=SITE_PASSCODE&envDescription=A%20shared%20login%20passcode%20for%20your%20exec%20board.%20Your%20chapter%20name%20and%20colors%20are%20set%20from%20inside%20the%20app%20after%20it%20deploys.&envLink=https%3A%2F%2Fgithub.com%2Fcolegonya%2Fgreek-social-calendar%23environment-variables&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22upstash%22%2C%22productSlug%22%3A%22upstash-kv%22%2C%22protocol%22%3A%22storage%22%7D%5D)
 
 1. **Click the button above.** Vercel asks you to sign in with GitHub, then copies this code into a new repository under your own account and starts setting up a matching Vercel project. Nothing here touches the original repo.
-2. **Add a database.** Same setup screen: find Storage, click Create Database, choose Upstash (Redis), and follow its prompts. It provisions the database and wires it up on its own. You don't need your own Upstash account or any API keys for this part.
-3. **Fill in the two environment variables it asks for.**
-   - `NEXT_PUBLIC_CHAPTER_NAME`: your chapter's name, e.g. `Alpha Beta`. Shows up as "Alpha Beta Social Calendar" throughout the app.
+2. **Confirm the database.** The same setup screen prompts you to create an Upstash (Redis) database as part of this same flow — no separate trip to a Storage tab needed. Accept the defaults it offers. You don't need your own Upstash account or any API keys for this part.
+   - If for some reason it doesn't prompt you automatically: on your new project, go to Storage → Create Database → Upstash, and follow its prompts instead.
+3. **Fill in the one environment variable it asks for.**
    - `SITE_PASSCODE`: pick anything. This is what your exec board types in to log in, so make it something you can drop in a group chat without an outsider guessing it.
 4. **Click Deploy.** A minute or two later you'll have a live URL like `your-project.vercel.app`. That's your chapter's calendar, running for real.
 
@@ -34,13 +34,13 @@ Every push to your new repo's main branch redeploys automatically. So if you lat
 
 ### Environment variables
 
-Only three of these matter, and the deploy button asks you for two of them.
+Only three of these matter, and the deploy button asks you to type in exactly one of them — the other two get filled in automatically by the Upstash step.
 
 | Variable | Required | Description |
 | --- | --- | --- |
 | `SITE_PASSCODE` | Yes | Your starting login passcode. The app won't start without it. That's intentional, not an oversight. You can change the passcode later from the Settings tab, which stores the new one in your database and stops using this. |
-| `UPSTASH_REDIS_REST_URL` | Yes | Where your data (events, budget, contacts) actually lives. Auto-filled if you add the Upstash integration during setup (step 2 above). |
-| `UPSTASH_REDIS_REST_TOKEN` | Yes | Access token for that same database. Also auto-filled by the Upstash integration. |
+| `UPSTASH_REDIS_REST_URL` | Yes | Where your data (events, budget, contacts) actually lives. Auto-filled by the Upstash step (step 2 above). |
+| `UPSTASH_REDIS_REST_TOKEN` | Yes | Access token for that same database. Also auto-filled by the Upstash step. |
 | `NEXT_PUBLIC_CHAPTER_NAME` | No | Starting chapter name, if you'd rather not type it in the app. Defaults to `Blank`. Editable in Settings. |
 | `NEXT_PUBLIC_BRAND_PRIMARY`, `NEXT_PUBLIC_BRAND_ACCENT`, `NEXT_PUBLIC_BRAND_ACCENT_DEEP`, `NEXT_PUBLIC_BRAND_INK` | No | Starting brand colors (hex). Leave unset for the default palette. Editable in Settings. |
 

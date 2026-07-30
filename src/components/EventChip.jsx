@@ -19,7 +19,13 @@ export function EventChip({
     <div
       title={`${event.name} (${categoryLabel})${severity ? " — conflict" : ""}${tentative ? " — tentative, unconfirmed" : ""}`}
       style={style}
-      className={`truncate rounded-md px-1.5 py-1 text-[11px] leading-tight shadow-sm md:line-clamp-2 md:whitespace-normal md:break-words ${
+      // Single-line truncation at every breakpoint. This used to be `truncate`
+      // plus `md:line-clamp-2`, but -webkit-line-clamp never engaged (the
+      // element kept a non--webkit-box display), so on desktop a long name
+      // rendered two lines with the second sliced through the middle of the
+      // glyphs and no ellipsis. One clean truncated line also fits more events
+      // per day cell, and the full name is always in the title tooltip.
+      className={`truncate rounded-md px-1.5 py-1 text-[11px] leading-tight shadow-sm ${
         tentative ? "border-2 border-dashed border-white/80 italic" : ""
       }`}
     >

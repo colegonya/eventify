@@ -150,39 +150,42 @@ export function ContactsTable({
                       className={input}
                     />
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <select
-                        name="contactStatus"
-                        value={row.status}
-                        onChange={(e) => {
-                          const status = e.target.value;
-                          setRows((rs) =>
-                            rs.map((r) => (r.key === row.key ? { ...r, status } : r)),
-                          );
-                        }}
-                        className={`w-full rounded-full border-0 px-3 py-1.5 text-sm font-medium outline-none ${CONTACT_STATUS_STYLES[row.status]}`}
-                      >
-                        {CONTACT_STATUSES.map((status) => (
-                          <option
-                            key={status}
-                            value={status}
-                            style={{ backgroundColor: CONTACT_STATUS_HEX[status], color: "#1e293b" }}
-                          >
-                            {status}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        type="text"
-                        name="contactPhone"
-                        defaultValue={row.phone}
-                        onChange={(e) => {
-                          e.target.value = formatPhoneInput(e.target.value);
-                        }}
-                        placeholder="(555) 555-5555"
-                        className={input}
-                      />
-                    </div>
+                    {/* Status gets its own full-width row rather than sharing a
+                        two-column row with the phone: the longest option
+                        ("Responded/Meeting Set") doesn't fit in half a card at
+                        any padding, and was rendering underneath the native
+                        dropdown arrow. pr-7 keeps the text clear of that arrow. */}
+                    <select
+                      name="contactStatus"
+                      value={row.status}
+                      onChange={(e) => {
+                        const status = e.target.value;
+                        setRows((rs) =>
+                          rs.map((r) => (r.key === row.key ? { ...r, status } : r)),
+                        );
+                      }}
+                      className={`w-full truncate rounded-full border-0 py-1.5 pl-3 pr-7 text-sm font-medium outline-none ${CONTACT_STATUS_STYLES[row.status]}`}
+                    >
+                      {CONTACT_STATUSES.map((status) => (
+                        <option
+                          key={status}
+                          value={status}
+                          style={{ backgroundColor: CONTACT_STATUS_HEX[status], color: "#1e293b" }}
+                        >
+                          {status}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      name="contactPhone"
+                      defaultValue={row.phone}
+                      onChange={(e) => {
+                        e.target.value = formatPhoneInput(e.target.value);
+                      }}
+                      placeholder="(555) 555-5555"
+                      className={input}
+                    />
 
                     <div className="grid grid-cols-2 gap-2 items-start">
                       <input

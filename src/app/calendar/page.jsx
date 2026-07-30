@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getCalendarPageData, getBrandingSettings } from "@/lib/data";
+import { getCalendarPageData, getBrandingSettings, isOnboardingChecklistDismissed } from "@/lib/data";
 import { requireSemesters } from "@/lib/setup";
 import { computeConflicts } from "@/lib/conflicts";
 import { computeCategorySpendStats, computeEquipmentContribution } from "@/lib/budget";
@@ -24,6 +24,7 @@ import { Legend, LegendDropdown } from "@/components/Legend";
 import { DayCell } from "@/components/DayCell";
 import { EditorProvider } from "@/components/EditorProvider";
 import { AddEventButton } from "@/components/AddEventButton";
+import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -56,12 +57,14 @@ export default async function CalendarPage({
   const [
     { events, gameDays, allEvents, drinkPresets, drinkItemGroups, equipmentItems, categories },
     { chapterName },
+    showOnboardingChecklist,
   ] = await Promise.all([
     getCalendarPageData(
       semester.id,
       semesters.map((s) => s.id),
     ),
     getBrandingSettings(),
+    isOnboardingChecklistDismissed().then((dismissed) => !dismissed),
   ]);
   const categoriesById = new Map(categories.map((c) => [c.id, c]));
   const categorySpendStats = Object.fromEntries(computeCategorySpendStats(allEvents));
@@ -181,6 +184,7 @@ export default async function CalendarPage({
       equipmentExpectedCents={equipmentExpectedCents}
     >
     <div className="flex h-full flex-col gap-3 p-3 pb-[max(3rem,calc(env(safe-area-inset-bottom)+2.5rem))] md:p-4">
+      {showOnboardingChecklist && <OnboardingChecklist />}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <SemesterSwitcher semesters={semesters} selectedId={semester.id} />

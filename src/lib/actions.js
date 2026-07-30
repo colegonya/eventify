@@ -26,6 +26,7 @@ import {
   deleteEquipmentItem as deleteEquipmentItemRecord,
   saveCategories,
   getCategories,
+  dismissOnboardingChecklist,
 } from "@/lib/data";
 import { parseISODate, formatISODate, addDays } from "@/lib/dates";
 import {
@@ -516,4 +517,9 @@ export async function saveCategoriesAction(formData) {
   revalidatePath("/calendar");
   revalidatePath("/budget");
   revalidatePath("/autofill");
+}
+
+export async function dismissOnboardingChecklistAction() {
+  await dismissOnboardingChecklist();
+  revalidatePath("/calendar");
 }
