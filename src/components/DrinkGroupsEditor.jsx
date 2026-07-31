@@ -114,16 +114,21 @@ export function DrinkGroupsEditor({ groups }) {
                       aria-label="Item name"
                       className={input}
                     />
-                    <input
-                      type="number"
-                      name={`item::${group.id}::${item.id}::price`}
-                      defaultValue={item.price}
-                      min="0"
-                      step="0.01"
-                      placeholder="$ / unit"
-                      aria-label={`Price per unit for ${item.name || "item"}`}
-                      className={`text-right ${input}`}
-                    />
+                    <div className="relative">
+                      <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-sm text-brand-ink/40">
+                        $
+                      </span>
+                      <input
+                        type="number"
+                        name={`item::${group.id}::${item.id}::price`}
+                        defaultValue={item.price}
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        aria-label={`Price per unit for ${item.name || "item"}`}
+                        className={`w-full pl-5 text-right ${input}`}
+                      />
+                    </div>
                     <button
                       type="button"
                       onClick={() => removeItem(group.id, item.id)}

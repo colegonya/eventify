@@ -94,18 +94,23 @@ export function DrinkCalculator({
         }}
         className={cellInput}
       />
-      <input
-        type="number"
-        min="0"
-        step="0.01"
-        value={row.price}
-        aria-label={`${row.name} price per unit`}
-        onChange={(e) => {
-          const price = Number.parseFloat(e.target.value) || 0;
-          setRows((rs) => rs.map((r, ri) => (ri === i ? { ...r, price } : r)));
-        }}
-        className={cellInput}
-      />
+      <div className="relative">
+        <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-sm text-brand-ink/40">
+          $
+        </span>
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          value={row.price}
+          aria-label={`${row.name} price per unit`}
+          onChange={(e) => {
+            const price = Number.parseFloat(e.target.value) || 0;
+            setRows((rs) => rs.map((r, ri) => (ri === i ? { ...r, price } : r)));
+          }}
+          className={`w-full pl-5 ${cellInput}`}
+        />
+      </div>
     </div>
   );
 
@@ -171,16 +176,21 @@ export function DrinkCalculator({
                   aria-label="New item name"
                   className="rounded-md border border-brand-ink/20 px-2 py-1 text-sm outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15"
                 />
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={newItemPrice}
-                  onChange={(e) => setNewItemPrice(e.target.value)}
-                  placeholder="$ / unit"
-                  aria-label="New item price per unit"
-                  className={cellInput}
-                />
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-sm text-brand-ink/40">
+                    $
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={newItemPrice}
+                    onChange={(e) => setNewItemPrice(e.target.value)}
+                    placeholder="0.00"
+                    aria-label="New item price per unit"
+                    className={`w-full pl-5 ${cellInput}`}
+                  />
+                </div>
               </div>
               <select
                 value={newItemGroupId}
