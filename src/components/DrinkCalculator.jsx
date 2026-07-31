@@ -80,6 +80,7 @@ export function DrinkCalculator({
         step="1"
         value={row.qty || ""}
         placeholder="0"
+        aria-label={`${row.name} quantity`}
         onChange={(e) => {
           const qty = Number.parseInt(e.target.value, 10) || 0;
           setRows((rs) => rs.map((r, ri) => (ri === i ? { ...r, qty } : r)));
@@ -91,6 +92,7 @@ export function DrinkCalculator({
         min="0"
         step="0.01"
         value={row.price}
+        aria-label={`${row.name} price per unit`}
         onChange={(e) => {
           const price = Number.parseFloat(e.target.value) || 0;
           setRows((rs) => rs.map((r, ri) => (ri === i ? { ...r, price } : r)));
@@ -159,6 +161,7 @@ export function DrinkCalculator({
                   value={newItemName}
                   onChange={(e) => setNewItemName(e.target.value)}
                   placeholder="Item name"
+                  aria-label="New item name"
                   className="rounded-md border border-brand-ink/20 px-2 py-1 text-sm outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15"
                 />
                 <input
@@ -168,12 +171,14 @@ export function DrinkCalculator({
                   value={newItemPrice}
                   onChange={(e) => setNewItemPrice(e.target.value)}
                   placeholder="$ / unit"
+                  aria-label="New item price per unit"
                   className={cellInput}
                 />
               </div>
               <select
                 value={newItemGroup}
                 onChange={(e) => setNewItemGroup(e.target.value)}
+                aria-label="New item group"
                 className="rounded-md border border-brand-ink/20 px-2 py-1 text-sm outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15"
               >
                 {groups.map((group) => (

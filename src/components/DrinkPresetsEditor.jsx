@@ -88,6 +88,7 @@ export function DrinkPresetsEditor({
                             step="1"
                             name={`preset::${category.id}::${item.name}`}
                             defaultValue={categoryPreset[item.name] || ""}
+                            aria-label={`${item.name} typical quantity for ${category.label}`}
                             placeholder="0"
                             className={cellInput}
                           />

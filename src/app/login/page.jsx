@@ -24,6 +24,7 @@ export default async function LoginPage({
           name="passcode"
           autoFocus
           required
+          aria-label="Passcode"
           placeholder="Passcode"
           className="mt-4 w-full rounded-lg border border-brand-ink/20 px-3 py-2 text-sm text-brand-ink shadow-sm outline-none transition-colors placeholder:text-brand-ink/30 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15"
         />

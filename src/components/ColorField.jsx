@@ -28,6 +28,7 @@ export function ColorField({ name, label, defaultValue, fallback }) {
           name={name}
           value={value}
           onChange={(e) => setValue(e.target.value)}
+          aria-label={`${label} hex value`}
           placeholder="default"
           spellCheck={false}
           className="w-24 rounded-md border border-brand-ink/20 px-2 py-1.5 font-mono text-sm outline-none focus:border-brand-primary"

@@ -139,6 +139,7 @@ export function ContactsTable({
                             rs.map((r) => (r.key === row.key ? { ...r, orgGroup } : r)),
                           );
                         }}
+                        aria-label="Organization"
                         placeholder="Org, e.g. a sorority or partner org"
                         className={`flex-1 ${input}`}
                       />
@@ -155,6 +156,7 @@ export function ContactsTable({
                       type="text"
                       name="contactPosition"
                       defaultValue={row.position}
+                      aria-label="Contact name or role"
                       placeholder="Name or role, e.g. Social Chair"
                       className={input}
                     />
@@ -166,6 +168,7 @@ export function ContactsTable({
                         dropdown arrow. pr-7 keeps the text clear of that arrow. */}
                     <select
                       name="contactStatus"
+                      aria-label="Contact status"
                       value={row.status}
                       onChange={(e) => {
                         const status = e.target.value;
@@ -192,6 +195,7 @@ export function ContactsTable({
                       onChange={(e) => {
                         e.target.value = formatPhoneInput(e.target.value);
                       }}
+                      aria-label="Phone number"
                       placeholder="(555) 555-5555"
                       className={input}
                     />
@@ -201,11 +205,13 @@ export function ContactsTable({
                         type="date"
                         name="contactMeetingDate"
                         defaultValue={row.meetingDate ?? ""}
+                        aria-label="Meeting date"
                         className={input}
                       />
                       <textarea
                         name="contactNotes"
                         defaultValue={row.notes}
+                        aria-label="Notes"
                         placeholder="Notes"
                         rows={1}
                         ref={autoResizeNotes}

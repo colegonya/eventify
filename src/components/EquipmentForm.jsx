@@ -158,6 +158,7 @@ export function EquipmentForm({
                 type="text"
                 name="actualSpendName"
                 placeholder="e.g. Couch from vendor"
+                aria-label="Line item name"
                 defaultValue={line.name}
                 className={`flex-1 ${input}`}
               />
@@ -166,6 +167,7 @@ export function EquipmentForm({
                 step="0.01"
                 name="actualSpendAmount"
                 placeholder="0.00"
+                aria-label="Line item amount"
                 defaultValue={line.amountCents ? (line.amountCents / 100).toFixed(2) : ""}
                 className={`w-28 ${input}`}
               />

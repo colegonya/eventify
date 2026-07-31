@@ -82,12 +82,14 @@ export function CategoriesEditor({ categories }) {
               type="color"
               name="categoryColor"
               defaultValue={row.color}
+              aria-label="Category color"
               className="h-9 w-9 shrink-0 cursor-pointer rounded border border-brand-ink/20 p-0.5"
             />
             <input
               type="text"
               name="categoryLabel"
               defaultValue={row.label}
+              aria-label="Category name"
               placeholder="Category name"
               className={`flex-1 basis-40 ${input}`}
             />

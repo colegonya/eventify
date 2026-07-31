@@ -406,6 +406,7 @@ export function EventForm({
                 type="text"
                 name="actualSpendName"
                 placeholder="e.g. Photobooth deposit"
+                aria-label="Line item name"
                 defaultValue={item.name}
                 className={`flex-1 ${input}`}
               />
@@ -415,6 +416,7 @@ export function EventForm({
                 min="0"
                 name="actualSpendAmount"
                 placeholder="0.00"
+                aria-label="Line item amount"
                 defaultValue={item.amountCents ? (item.amountCents / 100).toFixed(2) : ""}
                 className={`w-28 ${input}`}
               />
