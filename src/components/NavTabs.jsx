@@ -16,7 +16,7 @@ export function NavTabs() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex gap-1 overflow-x-auto px-4 md:px-6">
+    <nav className="flex gap-0 overflow-x-auto px-1 sm:gap-1 sm:px-4 md:px-6">
       {TABS.map((tab) => {
         const active = pathname.startsWith(tab.href);
         return (
@@ -24,7 +24,7 @@ export function NavTabs() {
             key={tab.href}
             href={tab.href}
             aria-current={active ? "page" : undefined}
-            className={`shrink-0 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
+            className={`shrink-0 border-b-2 px-1 py-2.5 text-xs font-medium transition-colors sm:px-3 sm:text-sm ${
               active
                 ? "border-brand-primary text-brand-primary"
                 : "border-transparent text-brand-ink/75 hover:text-brand-ink"
