@@ -254,6 +254,7 @@ export async function addDrinkItemAction(formData) {
   const name = String(formData.get("itemName") ?? "").trim();
   const group = String(formData.get("itemGroup") ?? "");
   const price = Number.parseFloat(String(formData.get("itemPrice") ?? ""));
+  const id = String(formData.get("itemId") ?? "") || crypto.randomUUID();
 
   if (!name || !GROUP_LABELS.includes(group) || !Number.isFinite(price) || price < 0) {
     return;
@@ -265,7 +266,7 @@ export async function addDrinkItemAction(formData) {
   );
   if (alreadyExists) return;
 
-  await addCustomDrinkItem({ id: crypto.randomUUID(), name, price, group });
+  await addCustomDrinkItem({ id, name, price, group });
   revalidatePath("/calendar");
   revalidatePath("/autofill");
 }
