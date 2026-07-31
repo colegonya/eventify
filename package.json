@@ -20,5 +20,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "tailwindcss": "^4"
+  },
+  "overrides": {
+    "sharp": "^0.35.3"
   }
 }
