@@ -170,38 +170,75 @@ export const STARTER_CONTACTS = [
   }),
 ];
 
+// Starting drink catalog for the Drinks tab. Groups and items are data the
+// chapter owns — rename, reprice, delete, or add to any of it. The slug ids
+// are stable so DEFAULT_DRINK_PRESETS below can reference items by id.
+export const DEFAULT_DRINK_GROUPS = [
+  {
+    id: "liquor",
+    label: "Liquor",
+    items: [
+      { id: "cooks-champagne", name: "Cook's Champagne", price: 10.09 },
+      { id: "vodka-1-5l", name: "1.5L Vodka", price: 14.79 },
+      { id: "tequila-blanco-1-75l", name: "1.75L Tequila Blanco", price: 27.49 },
+    ],
+  },
+  {
+    id: "beer-seltzer",
+    label: "Beer & Seltzer",
+    items: [
+      { id: "coors-36", name: "36 Coors", price: 29.0 },
+      { id: "seltzers-24", name: "24 Seltzers", price: 23.59 },
+    ],
+  },
+  {
+    id: "mixers",
+    label: "Mixers",
+    items: [
+      { id: "cranberry-juice-2", name: "2 Jugs Cranberry Juice", price: 9.86 },
+      { id: "orange-juice-2gal", name: "2 1-Gal Jugs Orange Juice", price: 18.38 },
+    ],
+  },
+  {
+    id: "cups",
+    label: "Cups",
+    items: [{ id: "red-solo-cups-240", name: "240 Red Solo Cups", price: 13.04 }],
+  },
+];
+
 // Default "typical order" per category for the Drink & supply calculator's
-// Autofill button, keyed by the starter category ids above. A category with
-// no realistic drink budget (Philanthropy, Other Org Event, Recruitment) is
-// left out, so Autofill doesn't show for it.
+// Autofill button, keyed by the starter category ids above and the item ids
+// from DEFAULT_DRINK_GROUPS. A category with no realistic drink budget
+// (Philanthropy, Other Org Event, Recruitment) is left out, so Autofill
+// doesn't show for it.
 export const DEFAULT_DRINK_PRESETS = {
-  mixer: { "Cook's Champagne": 6, "1.5L Vodka": 2, "24 Seltzers": 2, "240 Red Solo Cups": 3 },
+  mixer: { "cooks-champagne": 6, "vodka-1-5l": 2, "seltzers-24": 2, "red-solo-cups-240": 3 },
   party: {
-    "1.5L Vodka": 6,
-    "1.75L Tequila Blanco": 3,
-    "36 Coors": 6,
-    "24 Seltzers": 4,
-    "2 Jugs Cranberry Juice": 4,
-    "2 1-Gal Jugs Orange Juice": 4,
-    "240 Red Solo Cups": 6,
+    "vodka-1-5l": 6,
+    "tequila-blanco-1-75l": 3,
+    "coors-36": 6,
+    "seltzers-24": 4,
+    "cranberry-juice-2": 4,
+    "orange-juice-2gal": 4,
+    "red-solo-cups-240": 6,
   },
   darty: {
-    "36 Coors": 10,
-    "24 Seltzers": 5,
-    "1.5L Vodka": 2,
-    "2 Jugs Cranberry Juice": 2,
-    "2 1-Gal Jugs Orange Juice": 2,
-    "240 Red Solo Cups": 4,
+    "coors-36": 10,
+    "seltzers-24": 5,
+    "vodka-1-5l": 2,
+    "cranberry-juice-2": 2,
+    "orange-juice-2gal": 2,
+    "red-solo-cups-240": 4,
   },
   "club-party": {
-    "36 Coors": 8,
-    "24 Seltzers": 4,
-    "1.5L Vodka": 4,
-    "2 Jugs Cranberry Juice": 2,
-    "2 1-Gal Jugs Orange Juice": 2,
-    "240 Red Solo Cups": 5,
+    "coors-36": 8,
+    "seltzers-24": 4,
+    "vodka-1-5l": 4,
+    "cranberry-juice-2": 2,
+    "orange-juice-2gal": 2,
+    "red-solo-cups-240": 5,
   },
-  retreat: { "36 Coors": 4, "240 Red Solo Cups": 1 },
-  "chapter-event": { "36 Coors": 8, "24 Seltzers": 4, "240 Red Solo Cups": 2 },
-  formal: { "Cook's Champagne": 10, "24 Seltzers": 3, "240 Red Solo Cups": 3 },
+  retreat: { "coors-36": 4, "red-solo-cups-240": 1 },
+  "chapter-event": { "coors-36": 8, "seltzers-24": 4, "red-solo-cups-240": 2 },
+  formal: { "cooks-champagne": 10, "seltzers-24": 3, "red-solo-cups-240": 3 },
 };

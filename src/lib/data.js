@@ -1,6 +1,5 @@
 import "server-only";
 import { kv } from "@/lib/kv";
-import { BASE_DRINK_ITEM_GROUPS } from "@/lib/drinkItems";
 import { parseISODate, formatISODate } from "@/lib/dates";
 import {
   DEFAULT_CHAPTER_NAME,
@@ -14,11 +13,15 @@ import {
   STARTER_GAME_DAYS,
   STARTER_CONTACTS,
   STARTER_CATEGORIES,
+  DEFAULT_DRINK_GROUPS,
   DEFAULT_DRINK_PRESETS,
 } from "@/lib/seed";
 
 const SEMESTERS_KEY = "semesters";
 const DRINK_PRESETS_KEY = "drinkPresets";
+const DRINK_GROUPS_KEY = "drinkGroups";
+// Legacy key, superseded by DRINK_GROUPS_KEY. Read once by the migration in
+// ensureDefaults(), then left orphaned in Redis as a rollback safety net.
 const CUSTOM_DRINK_ITEMS_KEY = "customDrinkItems";
 const CATEGORIES_KEY = "categories";
 const BRANDING_KEY = "branding";
@@ -206,36 +209,21 @@ export async function saveDrinkPresets(presets) {
   invalidateCache(DRINK_PRESETS_KEY);
 }
 
-export async function getCustomDrinkItems() {
-  return cached(CUSTOM_DRINK_ITEMS_KEY, async () => (await kv.get(CUSTOM_DRINK_ITEMS_KEY)) ?? []);
+export async function getDrinkGroups() {
+  return cached(DRINK_GROUPS_KEY, async () => (await kv.get(DRINK_GROUPS_KEY)) ?? []);
 }
 
-export async function saveCustomDrinkItems(items) {
-  await kv.set(CUSTOM_DRINK_ITEMS_KEY, items);
-  invalidateCache(CUSTOM_DRINK_ITEMS_KEY);
+export async function saveDrinkGroups(groups) {
+  await kv.set(DRINK_GROUPS_KEY, groups);
+  invalidateCache(DRINK_GROUPS_KEY);
 }
 
-export function mergeDrinkItemGroups(custom) {
-  return BASE_DRINK_ITEM_GROUPS.map((group) => ({
-    ...group,
-    items: [
-      ...group.items,
-      ...custom
-        .filter((item) => item.group === group.label)
-        .map(({ name, price }) => ({ name, price })),
-    ],
-  }));
-}
-
-export async function getDrinkItemGroups() {
-  const custom = await getCustomDrinkItems();
-  return mergeDrinkItemGroups(custom);
-}
-
-export async function addCustomDrinkItem(item) {
-  const custom = await getCustomDrinkItems();
-  custom.push(item);
-  await saveCustomDrinkItems(custom);
+export async function addDrinkItemToGroup(groupId, item) {
+  const groups = await getDrinkGroups();
+  const group = groups.find((g) => g.id === groupId);
+  if (!group) return;
+  group.items.push(item);
+  await saveDrinkGroups(groups);
 }
 
 export async function getEquipmentItems() {
@@ -287,14 +275,14 @@ export async function getCalendarPageData(
   pipeline.get(eventsKey(semesterId));
   pipeline.get(gameDaysKey(semesterId));
   pipeline.get(DRINK_PRESETS_KEY);
-  pipeline.get(CUSTOM_DRINK_ITEMS_KEY);
+  pipeline.get(DRINK_GROUPS_KEY);
   pipeline.get(EQUIPMENT_KEY);
   pipeline.get(CATEGORIES_KEY);
   for (const id of semesterIds) {
     pipeline.get(eventsKey(id));
   }
 
-  const [events, gameDays, drinkPresets, customItems, equipmentItems, categories, ...perSemesterEvents] =
+  const [events, gameDays, drinkPresets, drinkGroups, equipmentItems, categories, ...perSemesterEvents] =
     await pipeline.exec();
 
   return {
@@ -302,7 +290,7 @@ export async function getCalendarPageData(
     gameDays: gameDays ?? [],
     allEvents: perSemesterEvents.flatMap((e) => e ?? []),
     drinkPresets: drinkPresets ?? {},
-    drinkItemGroups: mergeDrinkItemGroups(customItems ?? []),
+    drinkItemGroups: drinkGroups ?? [],
     equipmentItems: equipmentItems ?? [],
     categories: categories ?? [],
   };
@@ -373,9 +361,35 @@ export async function dismissOnboardingChecklist() {
   invalidateCache(ONBOARDING_KEY);
 }
 
+// Merges the legacy customDrinkItems list into the seeded groups, matching by
+// group label the way the old merge did. A custom item whose label matches no
+// seeded group gets its own new group appended, so nothing is dropped. Custom
+// items already carry UUID ids from when they were created — reuse them so
+// any name-keyed presets migrated in the same pass stay attached.
+function buildInitialDrinkGroups(customItems) {
+  const groups = DEFAULT_DRINK_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.map((item) => ({ ...item })),
+  }));
+  for (const custom of customItems) {
+    const item = {
+      id: custom.id ?? crypto.randomUUID(),
+      name: custom.name,
+      price: custom.price,
+    };
+    const group = groups.find((g) => g.label === custom.group);
+    if (group) {
+      group.items.push(item);
+    } else {
+      groups.push({ id: crypto.randomUUID(), label: custom.group, items: [item] });
+    }
+  }
+  return groups;
+}
+
 // Backfills the defaults the app can't function without — an event has to pick
-// a category from somewhere, and the Autofill tab needs presets to autofill
-// from. Deliberately does NOT create a semester: a deployment with no
+// a category from somewhere, and the Drinks tab needs a catalog and presets to
+// autofill from. Deliberately does NOT create a semester: a deployment with no
 // semesters is one that hasn't been through /setup yet, and inventing a
 // fictional semester there is what used to leave new chapters stuck with a
 // hardcoded "Example Semester" they couldn't rename. Returns the semester list
@@ -388,6 +402,46 @@ export async function ensureDefaults() {
   if ((await kv.get(CATEGORIES_KEY)) === null) {
     await kv.set(CATEGORIES_KEY, STARTER_CATEGORIES);
     invalidateCache(CATEGORIES_KEY);
+  }
+
+  // Materializes the drinkGroups catalog: seeded defaults merged with any
+  // legacy customDrinkItems (pre-Drinks-tab deployments), and in the same
+  // pass re-keys existing drinkPresets from item names to item ids. Must run
+  // BEFORE the presets seed below — a fresh deploy has to seed the id-keyed
+  // DEFAULT_DRINK_PRESETS, and a legacy deploy has to migrate its name-keyed
+  // presets before the null-check would skip them. The NX write matters: two
+  // cold instances can both see drinkGroups === null, and if the loser re-ran
+  // the name→id re-key against presets the winner already migrated, it would
+  // find zero name matches and wipe every preset. Only the instance whose
+  // SET NX landed does the re-key; keys that already look like item ids are
+  // kept as a further idempotence guard.
+  if ((await kv.get(DRINK_GROUPS_KEY)) === null) {
+    const customItems = (await kv.get(CUSTOM_DRINK_ITEMS_KEY)) ?? [];
+    const groups = buildInitialDrinkGroups(customItems);
+    const wasSet = await kv.set(DRINK_GROUPS_KEY, groups, { nx: true });
+    invalidateCache(DRINK_GROUPS_KEY);
+
+    if (wasSet) {
+      const presets = await kv.get(DRINK_PRESETS_KEY);
+      if (presets !== null) {
+        const items = groups.flatMap((g) => g.items);
+        const idByName = new Map(items.map((item) => [item.name, item.id]));
+        const knownIds = new Set(items.map((item) => item.id));
+        const migrated = {};
+        for (const [categoryId, quantities] of Object.entries(presets)) {
+          const migratedQuantities = {};
+          for (const [key, qty] of Object.entries(quantities)) {
+            const itemId = knownIds.has(key) ? key : idByName.get(key);
+            if (itemId) migratedQuantities[itemId] = qty;
+          }
+          if (Object.keys(migratedQuantities).length > 0) {
+            migrated[categoryId] = migratedQuantities;
+          }
+        }
+        await kv.set(DRINK_PRESETS_KEY, migrated);
+        invalidateCache(DRINK_PRESETS_KEY);
+      }
+    }
   }
 
   if ((await kv.get(DRINK_PRESETS_KEY)) === null) {

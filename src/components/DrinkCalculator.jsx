@@ -22,7 +22,7 @@ export function DrinkCalculator({
   const [showAddItem, setShowAddItem] = useState(false);
   const [newItemName, setNewItemName] = useState("");
   const [newItemPrice, setNewItemPrice] = useState("");
-  const [newItemGroup, setNewItemGroup] = useState(groups[0]?.label ?? "");
+  const [newItemGroupId, setNewItemGroupId] = useState(groups[0]?.id ?? "");
   const [addItemError, setAddItemError] = useState(null);
 
   const total = rows.reduce((sum, row) => sum + row.qty * row.price, 0);
@@ -32,8 +32,13 @@ export function DrinkCalculator({
 
   // Items just added this session render here immediately, ahead of the
   // server round-trip that adds them to `groups` for good.
-  const knownNames = new Set(groups.flatMap((group) => group.items.map((item) => item.name)));
-  const pendingRows = rows.filter((row) => !knownNames.has(row.name));
+  const knownIds = new Set(groups.flatMap((group) => group.items.map((item) => item.id)));
+  const pendingRows = rows.filter((row) => !knownIds.has(row.id));
+
+  // Gate on a preset id actually matching a current item, so a typical order
+  // whose items have all since been deleted doesn't offer an Autofill that
+  // fills nothing but zeros.
+  const hasTypicalOrder = typicalOrder && rows.some((row) => typicalOrder[row.id]);
 
   const handleAddItem = () => {
     const name = newItemName.trim();
@@ -53,14 +58,16 @@ export function DrinkCalculator({
     }
 
     setAddItemError(null);
+    const id = crypto.randomUUID();
     const formData = new FormData();
+    formData.set("itemId", id);
     formData.set("itemName", name);
     formData.set("itemPrice", String(price));
-    formData.set("itemGroup", newItemGroup);
+    formData.set("itemGroupId", newItemGroupId);
 
     startTransition(async () => {
       await addDrinkItemAction(formData);
-      setRows((rs) => [...rs, { name, price, qty: 0 }]);
+      setRows((rs) => [...rs, { id, name, price, qty: 0 }]);
       setNewItemName("");
       setNewItemPrice("");
       setShowAddItem(false);
@@ -70,7 +77,7 @@ export function DrinkCalculator({
 
   const renderRow = (row, i) => (
     <div
-      key={row.name}
+      key={row.id}
       className="grid grid-cols-[1fr_4.5rem_5.5rem] items-center gap-2 text-sm text-brand-ink"
     >
       <span>{row.name}</span>
@@ -115,11 +122,11 @@ export function DrinkCalculator({
 
       {open && (
         <div className="flex flex-col gap-3 border-t border-brand-ink/10 p-3">
-          {typicalOrder && (
+          {hasTypicalOrder && (
             <button
               type="button"
               onClick={() =>
-                setRows((rs) => rs.map((r) => ({ ...r, qty: typicalOrder[r.name] ?? 0 })))
+                setRows((rs) => rs.map((r) => ({ ...r, qty: typicalOrder[r.id] ?? 0 })))
               }
               className="self-start rounded-lg border border-brand-primary/30 bg-brand-primary/5 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-primary/10"
             >
@@ -133,12 +140,12 @@ export function DrinkCalculator({
             <span className="text-right">$ / unit</span>
           </div>
           {groups.map((group) => (
-            <div key={group.label} className="flex flex-col gap-1.5">
+            <div key={group.id} className="flex flex-col gap-1.5">
               <span className="self-start rounded-md bg-brand-ink/10 px-2 py-1 text-xs font-bold uppercase tracking-wide text-brand-ink">
                 {group.label}
               </span>
               {group.items.map((groupItem) => {
-                const i = rows.findIndex((row) => row.name === groupItem.name);
+                const i = rows.findIndex((row) => row.id === groupItem.id);
                 return renderRow(rows[i], i);
               })}
             </div>
@@ -149,7 +156,7 @@ export function DrinkCalculator({
               <span className="self-start rounded-md bg-brand-ink/10 px-2 py-1 text-xs font-bold uppercase tracking-wide text-brand-ink">
                 Just added
               </span>
-              {pendingRows.map((row) => renderRow(row, rows.findIndex((r) => r.name === row.name)))}
+              {pendingRows.map((row) => renderRow(row, rows.findIndex((r) => r.id === row.id)))}
             </div>
           )}
 
@@ -176,13 +183,13 @@ export function DrinkCalculator({
                 />
               </div>
               <select
-                value={newItemGroup}
-                onChange={(e) => setNewItemGroup(e.target.value)}
+                value={newItemGroupId}
+                onChange={(e) => setNewItemGroupId(e.target.value)}
                 aria-label="New item group"
                 className="rounded-md border border-brand-ink/20 px-2 py-1 text-sm outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15"
               >
                 {groups.map((group) => (
-                  <option key={group.label} value={group.label}>
+                  <option key={group.id} value={group.id}>
                     {group.label}
                   </option>
                 ))}
@@ -210,13 +217,15 @@ export function DrinkCalculator({
               </div>
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={() => setShowAddItem(true)}
-              className="self-start text-sm font-medium text-brand-primary hover:underline"
-            >
-              + Add item
-            </button>
+            groups.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowAddItem(true)}
+                className="self-start text-sm font-medium text-brand-primary hover:underline"
+              >
+                + Add item
+              </button>
+            )
           )}
 
           <div className="flex items-center justify-between border-t border-brand-ink/10 pt-2 text-sm font-medium text-brand-ink">

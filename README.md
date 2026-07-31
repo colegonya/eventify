@@ -8,7 +8,7 @@ A shared social calendar and budget tracker for a fraternity or sorority's exec 
 - **Budget**: running totals (Expected Spend, Actual Spend) against a semester cap, entered per event. There's also an equipment wishlist that carries unbought items forward from one semester to the next.
 - **Contacts**: a per-semester list of other orgs' social chairs and where things stand with each one.
 - **Categories**: event categories (Mixer, Formal, Philanthropy, etc.) are data you own, not hardcoded. Add, edit, recolor, or delete them from the Categories tab without touching any code.
-- **Drink & supply calculator**: per-event cost estimates, with an "Autofill" button that pulls from editable presets per category.
+- **Drink & supply calculator**: per-event cost estimates, with an "Autofill" button that pulls from editable presets per category. The whole catalog — drink groups, items, prices — is yours to edit from the Drinks tab.
 - **Calendar export**: a one-time `.ics` export of your chapter's own hosted events.
 - **Passcode-gated access**: one shared passcode for the whole exec board. No per-user accounts to manage, and you can change it from the Settings tab when officers turn over.
 - **Settings you own**: chapter name, colors, semesters, and the passcode are all editable in the app. After the initial deploy you never need to touch your hosting dashboard again.
@@ -54,7 +54,7 @@ All of this is done in the running app. No code edits, no redeploys.
 - **Passcode**: the Settings tab. Changing it signs out every other browser, which is what you want when officers turn over. You stay signed in.
 - **Semesters**: the Settings tab, or "Add or edit semesters…" in the semester dropdown on the Calendar and Budget tabs. Add one each term, rename them, move their dates, or delete one (which deletes its events, game days, and contacts too).
 - **Event categories**: the Categories tab. Add, rename, recolor, or delete them as you like. Each category can also be marked as netting revenue (cost offset by income, like a philanthropy event), excluded from the budget total (Recruitment, say), or flagged as another org's event (kept out of your budget and calendar export).
-- **Drink & supply presets**: the Autofill tab, per category.
+- **Drinks & supply catalog**: the Drinks tab — drink groups and items with prices, plus each category's typical autofill quantities.
 
 If you'd rather change the *default* palette in code, edit `src/app/globals.css` (`--color-brand-primary`, `--color-brand-accent`, `--color-brand-ink`, etc.) — that needs the local dev setup below.
 

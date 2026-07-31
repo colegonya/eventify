@@ -42,11 +42,14 @@ export function DrinkPresetsEditor({
       onChange={scheduleSave}
       className="flex flex-col gap-4"
     >
-      <p className="text-sm text-brand-ink/75">
-        Set the quantities &ldquo;Autofill?&rdquo; fills in on the event form&apos;s drink
-        calculator, per category. A category with every item left at 0 has no typical order, so
-        Autofill won&apos;t show for it.
-      </p>
+      <div>
+        <h2 className="text-sm font-semibold text-brand-ink">Autofill quantities</h2>
+        <p className="text-sm text-brand-ink/75">
+          Set the quantities &ldquo;Autofill?&rdquo; fills in on the event form&apos;s drink
+          calculator, per category. A category with every item left at 0 has no typical order, so
+          Autofill won&apos;t show for it.
+        </p>
+      </div>
 
       {categories.length === 0 ? (
         <p className="text-sm text-brand-ink/75">Add a category from the Categories tab first.</p>
@@ -72,13 +75,13 @@ export function DrinkPresetsEditor({
 
                 <div className="mt-3 flex flex-col gap-3">
                   {groups.map((group) => (
-                    <div key={group.label} className="flex flex-col gap-1.5">
+                    <div key={group.id} className="flex flex-col gap-1.5">
                       <span className="self-start rounded-md bg-brand-ink/10 px-2 py-1 text-xs font-bold uppercase tracking-wide text-brand-ink">
                         {group.label}
                       </span>
                       {group.items.map((item) => (
                         <div
-                          key={item.name}
+                          key={item.id}
                           className="flex items-center justify-between gap-2 text-sm text-brand-ink"
                         >
                           <span className="truncate">{item.name}</span>
@@ -86,8 +89,8 @@ export function DrinkPresetsEditor({
                             type="number"
                             min="0"
                             step="1"
-                            name={`preset::${category.id}::${item.name}`}
-                            defaultValue={categoryPreset[item.name] || ""}
+                            name={`preset::${category.id}::${item.id}`}
+                            defaultValue={categoryPreset[item.id] || ""}
                             aria-label={`${item.name} typical quantity for ${category.label}`}
                             placeholder="0"
                             className={cellInput}

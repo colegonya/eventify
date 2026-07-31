@@ -18,9 +18,9 @@ import {
   seedExampleData,
   saveContacts,
   saveDrinkPresets,
-  getDrinkItemGroups,
-  addCustomDrinkItem,
-  saveCustomDrinkItems,
+  getDrinkGroups,
+  saveDrinkGroups,
+  addDrinkItemToGroup,
   getEquipmentItems,
   saveEquipmentItem,
   deleteEquipmentItem as deleteEquipmentItemRecord,
@@ -36,7 +36,6 @@ import {
   setPasscode,
   MIN_PASSCODE_LENGTH,
 } from "@/lib/auth";
-import { GROUP_LABELS } from "@/lib/drinkItems";
 import { BRAND_COLOR_VARS } from "@/lib/config";
 
 const AUTH_COOKIE_OPTIONS = {
@@ -239,62 +238,80 @@ export async function saveDrinkPresetsAction(formData) {
   const presets = {};
   for (const [key, value] of formData.entries()) {
     if (!key.startsWith("preset::")) continue;
-    const [, categoryId, itemName] = key.split("::");
+    const [, categoryId, itemId] = key.split("::");
     const qty = Number.parseInt(String(value), 10);
     if (!qty) continue;
-    presets[categoryId] = { ...presets[categoryId], [itemName]: qty };
+    presets[categoryId] = { ...presets[categoryId], [itemId]: qty };
   }
 
   await saveDrinkPresets(presets);
-  revalidatePath("/autofill");
+  revalidatePath("/drinks");
+  revalidatePath("/calendar");
+}
+
+// Full replace of the drinkGroups catalog from the Drinks tab's editor form.
+// Field naming: `group::${groupId}::label`, `item::${groupId}::${itemId}::name`,
+// `item::${groupId}::${itemId}::price` — iterated in entry (DOM) order, which
+// is what makes form order the stored order. Deleted groups/items are simply
+// absent from the form. Deliberately never writes drinkPresets: reads tolerate
+// orphaned item ids, and saveDrinkPresetsAction rebuilds the whole presets
+// object from rendered inputs on its next save anyway, so an active scrub here
+// would only add a read-modify-write race against the presets form that
+// auto-saves from the same page.
+export async function saveDrinkGroupsAction(formData) {
+  const groups = [];
+  const groupById = new Map();
+  const seenNames = new Set();
+
+  for (const [key, value] of formData.entries()) {
+    const parts = key.split("::");
+    if (parts[0] === "group" && parts[2] === "label") {
+      const id = parts[1];
+      // A group whose label was blanked out mid-edit still holds its items —
+      // keep it under a placeholder rather than silently deleting them.
+      const group = { id, label: String(value).trim() || "Untitled group", items: [] };
+      groups.push(group);
+      groupById.set(id, group);
+    } else if (parts[0] === "item" && parts[3] === "name") {
+      const group = groupById.get(parts[1]);
+      const name = String(value).trim();
+      const lowerName = name.toLowerCase();
+      if (!group || !name || seenNames.has(lowerName)) continue;
+      seenNames.add(lowerName);
+      group.items.push({ id: parts[2], name, price: 0 });
+    } else if (parts[0] === "item" && parts[3] === "price") {
+      const item = groupById.get(parts[1])?.items.find((i) => i.id === parts[2]);
+      const price = Number.parseFloat(String(value));
+      if (!item || !Number.isFinite(price) || price < 0) continue;
+      item.price = price;
+    }
+  }
+
+  await saveDrinkGroups(groups);
+  revalidatePath("/drinks");
   revalidatePath("/calendar");
 }
 
 export async function addDrinkItemAction(formData) {
   const name = String(formData.get("itemName") ?? "").trim();
-  const group = String(formData.get("itemGroup") ?? "");
+  const groupId = String(formData.get("itemGroupId") ?? "");
   const price = Number.parseFloat(String(formData.get("itemPrice") ?? ""));
   const id = String(formData.get("itemId") ?? "") || crypto.randomUUID();
 
-  if (!name || !GROUP_LABELS.includes(group) || !Number.isFinite(price) || price < 0) {
+  if (!name || !Number.isFinite(price) || price < 0) {
     return;
   }
 
-  const groups = await getDrinkItemGroups();
+  const groups = await getDrinkGroups();
+  if (!groups.some((g) => g.id === groupId)) return;
   const alreadyExists = groups.some((g) =>
     g.items.some((item) => item.name.toLowerCase() === name.toLowerCase()),
   );
   if (alreadyExists) return;
 
-  await addCustomDrinkItem({ id, name, price, group });
+  await addDrinkItemToGroup(groupId, { id, name, price });
   revalidatePath("/calendar");
-  revalidatePath("/autofill");
-}
-
-export async function saveCustomDrinkItemsAction(formData) {
-  const ids = formData.getAll("customItemId");
-  const names = formData.getAll("customItemName");
-  const prices = formData.getAll("customItemPrice");
-  const itemGroups = formData.getAll("customItemGroup");
-
-  const items = [];
-  const seenNames = new Set();
-  for (let i = 0; i < ids.length; i++) {
-    const name = String(names[i] ?? "").trim();
-    if (!name) continue;
-    const group = String(itemGroups[i] ?? "");
-    if (!GROUP_LABELS.includes(group)) continue;
-    const price = Number.parseFloat(String(prices[i] ?? ""));
-    if (!Number.isFinite(price) || price < 0) continue;
-    const lowerName = name.toLowerCase();
-    if (seenNames.has(lowerName)) continue;
-    seenNames.add(lowerName);
-    items.push({ id: String(ids[i]), name, price, group });
-  }
-
-  await saveCustomDrinkItems(items);
-  revalidatePath("/calendar");
-  revalidatePath("/autofill");
+  revalidatePath("/drinks");
 }
 
 export async function saveEquipmentAction(formData) {
@@ -517,7 +534,7 @@ export async function saveCategoriesAction(formData) {
   revalidatePath("/categories");
   revalidatePath("/calendar");
   revalidatePath("/budget");
-  revalidatePath("/autofill");
+  revalidatePath("/drinks");
 }
 
 export async function dismissOnboardingChecklistAction() {

@@ -4,7 +4,7 @@ import { dismissOnboardingChecklistAction } from "@/lib/actions";
 const ITEMS = [
   { label: "Set your chapter's colors", href: "/settings#chapter" },
   { label: "Review your event categories", href: "/categories" },
-  { label: "Set your drink & supply presets", href: "/autofill" },
+  { label: "Set up your drinks & autofill presets", href: "/drinks" },
   { label: "Make sure your exec board has the passcode", href: "/settings#passcode" },
 ];
 
