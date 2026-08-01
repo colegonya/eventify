@@ -32,6 +32,27 @@ export function DrinkPresetsEditor({
     };
   }, []);
 
+  // Categories that had no typical order when the page loaded: collapsed, and
+  // sorted to the bottom. Frozen at mount rather than re-derived from
+  // `presets`, because saveDrinkPresetsAction revalidates /drinks and so sends
+  // fresh props through here after every autosave. Re-deriving would let a card
+  // you're actively typing in jump to the bottom and collapse mid-edit (zeroing
+  // its last quantity drops the key server-side), or shoot to the top the
+  // moment its first quantity saves. The order settles on the next page load.
+  const [emptyAtMount] = useState(
+    () =>
+      new Set(
+        categories
+          .filter((c) => !Object.values(presets[c.id] ?? {}).some((qty) => qty > 0))
+          .map((c) => c.id),
+      ),
+  );
+
+  // Stable sort, so categories keep their Categories-tab order within each half.
+  const orderedCategories = [...categories].sort(
+    (a, b) => Number(emptyAtMount.has(a.id)) - Number(emptyAtMount.has(b.id)),
+  );
+
   const cellInput =
     "w-20 rounded-md border border-brand-ink/20 bg-white px-2 py-1 text-right text-sm text-brand-ink outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15";
 
@@ -47,7 +68,8 @@ export function DrinkPresetsEditor({
         <p className="text-sm text-brand-ink/75">
           Set the quantities &ldquo;Autofill?&rdquo; fills in on the event form&apos;s drink
           calculator, per category. A category with every item left at 0 has no typical order, so
-          Autofill won&apos;t show for it.
+          Autofill won&apos;t show for it — those sit collapsed at the bottom here until you give
+          them quantities.
         </p>
       </div>
 
@@ -55,13 +77,13 @@ export function DrinkPresetsEditor({
         <p className="text-sm text-brand-ink/75">Add a category from the Categories tab first.</p>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {categories.map((category) => {
+          {orderedCategories.map((category) => {
             const categoryPreset = presets[category.id] ?? {};
             return (
               <details
                 key={category.id}
                 className="group rounded-xl border border-brand-ink/10 bg-white p-4 shadow-sm"
-                open={Object.keys(categoryPreset).length > 0}
+                open={!emptyAtMount.has(category.id)}
               >
                 <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold text-brand-ink marker:content-none">
                   {category.label}
