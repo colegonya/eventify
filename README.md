@@ -1,4 +1,4 @@
-# Greek Social Calendar
+# Eventify
 
 A shared social calendar and budget tracker for a fraternity or sorority's exec board. Built around one chapter's actual planning workflow (categories, co-hosted events, a semester budget cap), not a generic calendar app with the labels swapped.
 
@@ -17,7 +17,7 @@ A shared social calendar and budget tracker for a fraternity or sorority's exec 
 
 You don't need to write code or open a terminal for this. Grab two free accounts, [GitHub](https://github.com/signup) and [Vercel](https://vercel.com/signup), and you're set. Vercel lets you sign up with GitHub in one click, so this takes about thirty seconds.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fcolegonya%2Fgreek-social-calendar&env=SITE_PASSCODE&envDescription=A%20shared%20login%20passcode%20for%20your%20exec%20board.%20Your%20chapter%20name%20and%20colors%20are%20set%20from%20inside%20the%20app%20after%20it%20deploys.&envLink=https%3A%2F%2Fgithub.com%2Fcolegonya%2Fgreek-social-calendar%23environment-variables&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22upstash%22%2C%22productSlug%22%3A%22upstash-kv%22%2C%22protocol%22%3A%22storage%22%7D%5D)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fcolegonya%2Feventify&env=SITE_PASSCODE&envDescription=A%20shared%20login%20passcode%20for%20your%20exec%20board.%20Your%20chapter%20name%20and%20colors%20are%20set%20from%20inside%20the%20app%20after%20it%20deploys.&envLink=https%3A%2F%2Fgithub.com%2Fcolegonya%2Feventify%23environment-variables&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22upstash%22%2C%22productSlug%22%3A%22upstash-kv%22%2C%22protocol%22%3A%22storage%22%7D%5D)
 
 1. **Click the button above.** Vercel asks you to sign in with GitHub, then copies this code into a new repository under your own account and starts setting up a matching Vercel project. Nothing here touches the original repo.
 2. **Confirm the database.** The same setup screen prompts you to create an Upstash (Redis) database as part of this same flow — no separate trip to a Storage tab needed. Accept the defaults it offers. You don't need your own Upstash account or any API keys for this part.
@@ -66,7 +66,7 @@ You only need this if you actually want to edit the code, say to change colors o
 
 ```bash
 git clone <your-repo-url>
-cd greek-social-calendar
+cd eventify
 npm install
 ```
 
