@@ -82,7 +82,7 @@ export function DrinkPresetsEditor({
             return (
               <details
                 key={category.id}
-                className="group rounded-xl border border-brand-ink/10 bg-white p-4 shadow-sm"
+                className="group self-start rounded-xl border border-brand-ink/10 bg-white p-4 shadow-sm"
                 open={!emptyAtMount.has(category.id)}
               >
                 <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold text-brand-ink marker:content-none">
