@@ -21,6 +21,7 @@ export function DayCell({
 }) {
   const { openEvent, openNew } = useEditor();
   const [dragOver, setDragOver] = useState(false);
+  const [draggingId, setDraggingId] = useState(null);
   const [, startTransition] = useTransition();
 
   return (
@@ -44,18 +45,22 @@ export function DayCell({
         if (fromIso === iso) return;
         startTransition(() => moveEventAction(semesterId, eventId, fromIso, iso));
       }}
-      className={`group flex min-h-0 flex-col overflow-hidden p-1 transition-colors ${
+      className={`group flex min-h-0 flex-col overflow-hidden p-1 transition-[background-color,box-shadow] ${
         dragOver
           ? "bg-brand-primary/5 ring-2 ring-inset ring-brand-primary"
           : dimmed
             ? "bg-brand-ink/[0.03] hover:bg-brand-ink/[0.05]"
-            : "bg-white hover:bg-brand-ink/[0.02]"
+            : "bg-background hover:bg-brand-ink/[0.02]"
       } ${dimmed ? "text-brand-ink/30" : ""}`}
     >
       <div className="mb-0.5 flex shrink-0 items-center justify-between">
         <span
           className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-medium ${
-            isToday ? "bg-brand-primary text-white" : "text-brand-ink/75"
+            isToday
+              ? "bg-brand-primary text-brand-primary-ink"
+              : dimmed
+                ? "text-brand-ink/40"
+                : "text-brand-ink/70"
           }`}
         >
           {date.getUTCDate()}
@@ -65,7 +70,7 @@ export function DayCell({
           onClick={() => openNew(iso)}
           aria-label={`Add event on ${iso}`}
           title="Add event on this day"
-          className="inline-flex h-6 w-6 items-center justify-center rounded text-[15px] leading-none text-brand-ink/0 transition-colors group-hover:text-brand-ink/60 hover:!text-brand-primary pointer-coarse:text-brand-ink/60 pointer-coarse:active:text-brand-primary"
+          className="inline-flex h-6 w-6 items-center justify-center rounded-sm text-[15px] leading-none text-brand-ink/0 transition-colors group-hover:text-brand-ink/60 hover:!text-brand-primary focus-visible:!text-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 pointer-coarse:text-brand-ink/60 pointer-coarse:active:text-brand-primary"
         >
           +
         </button>
@@ -74,7 +79,7 @@ export function DayCell({
         {gameDays.map((gd) => (
           <div
             key={gd.id}
-            className="truncate rounded-md border border-dashed border-brand-ink/40 px-1.5 py-0.5 text-[11px] italic text-brand-ink/75"
+            className="truncate rounded-xs border border-dashed border-brand-ink/40 px-1.5 py-0.5 text-[11px] italic text-brand-ink/75"
             title={`Game day: vs. ${gd.opponent}`}
           >
             vs. {gd.opponent}
@@ -90,13 +95,17 @@ export function DayCell({
                 DRAG_MIME,
                 JSON.stringify({ eventId: event.id, fromIso: iso }),
               );
+              setDraggingId(event.id);
             }}
-            className="cursor-grab active:cursor-grabbing"
+            onDragEnd={() => setDraggingId(null)}
+            className={`cursor-grab rounded-xs transition-[box-shadow,transform] duration-150 active:cursor-grabbing ${
+              draggingId === event.id ? "scale-[1.03] shadow-[var(--shadow-lifted)]" : ""
+            }`}
           >
             <button
               type="button"
               onClick={() => openEvent(event.id)}
-              className="block w-full text-left"
+              className="block w-full rounded-xs text-left transition-[filter] duration-150 hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
             >
               <EventChip
                 event={event}

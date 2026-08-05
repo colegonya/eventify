@@ -25,7 +25,7 @@ export function EventChip({
       // rendered two lines with the second sliced through the middle of the
       // glyphs and no ellipsis. One clean truncated line also fits more events
       // per day cell, and the full name is always in the title tooltip.
-      className={`truncate rounded-md px-1.5 py-1 text-[11px] leading-tight shadow-sm ${
+      className={`truncate rounded-xs px-1.5 py-1 text-[11px] font-medium leading-tight ${
         tentative ? "border-2 border-dashed border-white/80 italic" : ""
       }`}
     >

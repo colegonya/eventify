@@ -9,7 +9,7 @@ export function AddEventButton({ date }) {
       type="button"
       onClick={() => openNew(date)}
       aria-label="Add event"
-      className="rounded-lg bg-brand-primary px-3.5 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-brand-primary/90"
+      className="rounded-sm bg-brand-primary px-3.5 py-1.5 text-sm font-semibold text-brand-primary-ink transition-all duration-150 hover:brightness-110 active:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
     >
       <span aria-hidden className="sm:hidden">+</span>
       <span className="hidden sm:inline">+ Add Event</span>

@@ -19,6 +19,12 @@ export const BRAND_COLOR_VARS = [
   ["--color-brand-ink", "ink", "Text"],
 ];
 
+// Mirrors --color-brand-primary's default in globals.css. A chapter's primary
+// can be any hex, including a light one that white text would fail against —
+// this is the fallback layout.jsx computes contrast from when a chapter
+// hasn't overridden it.
+export const DEFAULT_BRAND_PRIMARY_HEX = "#1e3a5f";
+
 export const DEFAULT_BRAND_COLORS = {
   primary: process.env.NEXT_PUBLIC_BRAND_PRIMARY,
   accent: process.env.NEXT_PUBLIC_BRAND_ACCENT,

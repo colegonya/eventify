@@ -54,7 +54,7 @@ export function DrinkPresetsEditor({
   );
 
   const cellInput =
-    "w-20 rounded-md border border-brand-ink/20 bg-white px-2 py-1 text-right text-sm text-brand-ink outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15";
+    "tabular-figures w-20 rounded-sm border border-brand-ink/20 bg-background px-2 py-1 text-right text-sm text-brand-ink outline-none transition-colors focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15";
 
   return (
     <form
@@ -82,10 +82,10 @@ export function DrinkPresetsEditor({
             return (
               <details
                 key={category.id}
-                className="group self-start rounded-xl border border-brand-ink/10 bg-white p-4 shadow-sm"
+                className="group self-start rounded-md border border-paper-line bg-background p-4 shadow-[var(--shadow-resting)]"
                 open={!emptyAtMount.has(category.id)}
               >
-                <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold text-brand-ink marker:content-none">
+                <summary className="flex cursor-pointer list-none items-center justify-between rounded-sm text-sm font-semibold text-brand-ink transition-colors hover:text-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 marker:content-none">
                   {category.label}
                   <span className="text-xs font-normal text-brand-ink/75 group-open:hidden">
                     show
@@ -98,7 +98,7 @@ export function DrinkPresetsEditor({
                 <div className="mt-3 flex flex-col gap-3">
                   {groups.map((group) => (
                     <div key={group.id} className="flex flex-col gap-1.5">
-                      <span className="self-start rounded-md bg-brand-ink/10 px-2 py-1 text-xs font-bold uppercase tracking-wide text-brand-ink">
+                      <span className="self-start rounded-xs bg-brand-ink/10 px-2 py-1 text-xs font-bold uppercase tracking-wide text-brand-ink">
                         {group.label}
                       </span>
                       {group.items.map((item) => (

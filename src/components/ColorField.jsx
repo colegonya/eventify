@@ -22,7 +22,7 @@ export function ColorField({ name, label, defaultValue, fallback }) {
           aria-label={`${label} color picker`}
           value={HEX.test(value) ? value : fallback}
           onChange={(e) => setValue(e.target.value)}
-          className="size-8 cursor-pointer rounded border border-brand-ink/20 bg-white p-0.5"
+          className="size-8 cursor-pointer rounded-sm border border-brand-ink/20 bg-background p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40"
         />
         <input
           name={name}
@@ -31,7 +31,7 @@ export function ColorField({ name, label, defaultValue, fallback }) {
           aria-label={`${label} hex value`}
           placeholder="default"
           spellCheck={false}
-          className="w-24 rounded-md border border-brand-ink/20 px-2 py-1.5 font-mono text-sm outline-none focus:border-brand-primary"
+          className="w-24 rounded-sm border border-brand-ink/20 px-2 py-1.5 font-mono text-sm outline-none transition-colors focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15"
         />
       </span>
     </label>

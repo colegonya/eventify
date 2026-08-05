@@ -81,11 +81,12 @@ export function EventForm({
   const remainingPct = pctOfCap(remainingCents, maxBudgetCents);
 
   const input =
-    "rounded-lg border border-brand-ink/20 bg-white px-3 py-2 text-sm text-brand-ink shadow-sm outline-none transition-colors placeholder:text-brand-ink/30 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15";
+    "rounded-sm border border-brand-ink/20 bg-background px-3 py-2 text-sm text-brand-ink outline-none transition-colors placeholder:text-brand-ink/30 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15";
   const label = "flex flex-col gap-1.5 text-sm text-brand-ink";
   const sublabel = "text-xs font-normal text-brand-ink/75";
-  const sectionLegend =
-    "px-1 text-xs font-semibold uppercase tracking-wide text-brand-ink/75";
+  // Title tier, not Label — a fieldset legend names a group of real content,
+  // not chrome, so it shouldn't share the small-caps register table headers use.
+  const sectionLegend = "px-1 text-[15px] font-semibold text-brand-ink";
 
   return (
     <form
@@ -146,19 +147,19 @@ export function EventForm({
           }
         });
       }}
-      className="mx-auto flex max-w-2xl flex-col gap-5 rounded-xl border border-brand-ink/10 bg-white p-5 shadow-sm md:p-7"
+      className="mx-auto flex max-w-2xl flex-col gap-5 rounded-lg border border-paper-line bg-background p-5 shadow-[var(--shadow-overlay)] md:p-7"
     >
       <input type="hidden" name="semesterId" value={semesterId} />
       {event && <input type="hidden" name="id" value={event.id} />}
 
-      <div className="flex items-center justify-between border-b border-brand-ink/10 pb-4">
-        <h2 id="event-editor-title" className="text-lg font-semibold text-brand-ink">
+      <div className="flex items-center justify-between border-b border-paper-line pb-4">
+        <h2 id="event-editor-title" className="text-xl font-bold tracking-tight text-brand-ink">
           {event ? "Edit Event" : "Add Event"}
         </h2>
         <button
           type="button"
           onClick={onClose}
-          className="text-sm text-brand-ink/75 hover:text-brand-primary hover:underline"
+          className="text-sm text-brand-ink/75 transition-colors hover:text-brand-primary hover:underline"
         >
           Close ✕
         </button>
@@ -218,7 +219,7 @@ export function EventForm({
         </div>
       )}
 
-      <fieldset className="flex flex-col gap-4 rounded-lg border border-brand-ink/15 bg-brand-ink/[0.02] p-4">
+      <fieldset className="flex flex-col gap-4 border-t border-paper-line pt-4">
         <legend className={sectionLegend}>Schedule</legend>
 
         <div className="grid grid-cols-2 gap-4">
@@ -273,7 +274,7 @@ export function EventForm({
         </label>
       </fieldset>
 
-      <fieldset className="flex flex-col gap-4 rounded-lg border border-brand-ink/15 bg-brand-ink/[0.02] p-4">
+      <fieldset className="flex flex-col gap-4 border-t border-paper-line pt-4">
         <legend className={sectionLegend}>Budget</legend>
 
         <span className="text-sm font-bold uppercase tracking-wide text-brand-ink">Expected</span>
@@ -334,7 +335,7 @@ export function EventForm({
         </div>
 
         {expectedSpendInput && (
-          <div className="-mt-2 rounded-md bg-brand-ink/[0.03] px-3 py-2 text-xs text-brand-ink/75">
+          <div className="tabular-figures -mt-2 px-1 text-xs text-brand-ink/75">
             {maxBudgetCents > 0 ? (
               <>
                 {thisEventPct}% of cap · Semester total: {centsToDisplay(projectedTotalCents)} (
@@ -349,11 +350,11 @@ export function EventForm({
           </div>
         )}
 
-        <div className="rounded-lg border border-brand-ink/15 bg-white">
+        <div className="border-t border-paper-line pt-3">
           <button
             type="button"
             onClick={() => setShowAdditionalDetails((v) => !v)}
-            className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium text-brand-ink"
+            className="flex w-full items-center justify-between rounded-sm text-sm font-medium text-brand-ink transition-colors hover:text-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40"
           >
             Additional details
             <span className="text-xs font-normal text-brand-ink/75">
@@ -362,8 +363,8 @@ export function EventForm({
           </button>
 
           <div
-            className={`grid grid-cols-2 gap-4 border-t border-brand-ink/10 p-3 ${
-              showAdditionalDetails ? "" : "hidden"
+            className={`grid grid-cols-2 gap-4 ${
+              showAdditionalDetails ? "mt-3" : "hidden"
             }`}
           >
             <label className={label}>
@@ -394,7 +395,7 @@ export function EventForm({
           </div>
         </div>
 
-        <span className="border-t border-brand-ink/10 pt-3 text-sm font-bold uppercase tracking-wide text-brand-ink">
+        <span className="border-t border-paper-line pt-3 text-sm font-bold uppercase tracking-wide text-brand-ink">
           Actual
         </span>
 
@@ -425,7 +426,7 @@ export function EventForm({
                 onClick={() =>
                   setLineItems((items) => items.filter((_, i) => i !== index))
                 }
-                className="text-sm text-brand-ink/75 hover:text-brand-primary"
+                className="text-sm text-brand-ink/75 transition-colors hover:text-brand-primary"
               >
                 Remove
               </button>
@@ -439,7 +440,7 @@ export function EventForm({
                 { key: `new-${nextLineItemKey++}`, name: "", amountCents: 0 },
               ])
             }
-            className="self-start text-sm font-medium text-brand-primary hover:underline"
+            className="self-start text-sm font-medium text-brand-primary transition-colors hover:underline"
           >
             + Add line item
           </button>
@@ -451,11 +452,11 @@ export function EventForm({
         <textarea name="notes" rows={3} defaultValue={event?.notes} className={input} />
       </label>
 
-      <div className="flex items-center justify-between border-t border-brand-ink/10 pt-5">
+      <div className="flex items-center justify-between border-t border-paper-line pt-5">
         <button
           type="submit"
           disabled={isPending || categories.length === 0}
-          className="rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-primary/90 disabled:opacity-60"
+          className="rounded-sm bg-brand-primary px-4 py-2 text-sm font-semibold text-brand-primary-ink transition-all duration-150 hover:brightness-110 active:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:opacity-60"
         >
           {isPending ? "Saving…" : "Save event"}
         </button>
@@ -464,7 +465,7 @@ export function EventForm({
           <button
             type="button"
             onClick={() => setConfirmingDelete(true)}
-            className="rounded-lg border border-brand-ink/20 px-4 py-2 text-sm text-brand-ink hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+            className="rounded-sm border border-brand-ink/20 px-4 py-2 text-sm text-brand-ink transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
           >
             Delete event
           </button>
@@ -482,14 +483,14 @@ export function EventForm({
                   onClose();
                 })
               }
-              className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
+              className="rounded-sm bg-red-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:opacity-60"
             >
               {isPending ? "Deleting…" : "Confirm delete"}
             </button>
             <button
               type="button"
               onClick={() => setConfirmingDelete(false)}
-              className="rounded-lg border border-brand-ink/20 px-3 py-2 text-sm text-brand-ink"
+              className="rounded-sm border border-brand-ink/20 px-3 py-2 text-sm text-brand-ink transition-colors hover:bg-brand-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
             >
               Cancel
             </button>

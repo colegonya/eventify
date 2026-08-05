@@ -24,10 +24,10 @@ export function NavTabs() {
             key={tab.href}
             href={tab.href}
             aria-current={active ? "page" : undefined}
-            className={`shrink-0 border-b-2 px-1 py-2.5 text-xs font-medium transition-colors sm:px-3 sm:text-sm ${
+            className={`shrink-0 border-b-2 px-1 py-2.5 text-[11px] font-semibold tracking-wide uppercase transition-colors sm:px-3 sm:text-[13px] ${
               active
                 ? "border-brand-primary text-brand-primary"
-                : "border-transparent text-brand-ink/75 hover:text-brand-ink"
+                : "border-transparent text-brand-ink/70 hover:text-brand-ink"
             }`}
           >
             {tab.label}

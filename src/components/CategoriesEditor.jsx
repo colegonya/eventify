@@ -51,7 +51,7 @@ export function CategoriesEditor({ categories }) {
   };
 
   const input =
-    "min-w-0 rounded-md border border-brand-ink/20 bg-white px-2 py-1.5 text-sm text-brand-ink outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15";
+    "min-w-0 rounded-sm border border-brand-ink/20 bg-background px-2 py-1.5 text-sm text-brand-ink outline-none transition-colors focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15";
 
   return (
     <form
@@ -71,11 +71,11 @@ export function CategoriesEditor({ categories }) {
         <p className="text-sm text-red-600">No categories yet — add one below before creating events.</p>
       )}
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col divide-y divide-paper-line overflow-hidden rounded-md border border-paper-line bg-background shadow-[var(--shadow-resting)]">
         {rows.map((row) => (
           <div
             key={row.key}
-            className="flex flex-wrap items-center gap-3 rounded-lg border border-brand-ink/10 bg-white p-3 shadow-sm"
+            className="flex flex-wrap items-center gap-3 p-3"
           >
             <input type="hidden" name="categoryId" value={row.id} />
             <input
@@ -83,7 +83,7 @@ export function CategoriesEditor({ categories }) {
               name="categoryColor"
               defaultValue={row.color}
               aria-label="Category color"
-              className="h-9 w-9 shrink-0 cursor-pointer rounded border border-brand-ink/20 p-0.5"
+              className="h-9 w-9 shrink-0 cursor-pointer rounded-sm border border-brand-ink/20 p-0.5"
             />
             <input
               type="text"
@@ -135,7 +135,7 @@ export function CategoriesEditor({ categories }) {
             <button
               type="button"
               onClick={() => removeRow(row.key)}
-              className="ml-auto text-sm text-brand-ink/75 hover:text-brand-primary"
+              className="ml-auto text-sm text-brand-ink/75 transition-colors hover:text-brand-primary"
             >
               Remove
             </button>

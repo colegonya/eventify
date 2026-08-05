@@ -11,18 +11,19 @@ import {
 import { MIN_PASSCODE_LENGTH } from "@/lib/auth";
 import { DeleteSemesterButton } from "@/components/DeleteSemesterButton";
 import { ColorField } from "@/components/ColorField";
+import { Masthead } from "@/components/Masthead";
 
 const fieldClass =
-  "rounded-md border border-brand-ink/20 px-2 py-1.5 text-sm outline-none focus:border-brand-primary";
+  "rounded-sm border border-brand-ink/20 bg-background px-2 py-1.5 text-sm outline-none transition-colors focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15";
 const labelClass = "flex flex-col gap-1 text-xs font-medium text-brand-ink/75";
 
 // Mirrors the default palette in globals.css, so a blank field still opens the
 // swatch picker on the color the app is actually using.
 const FALLBACK_SWATCHES = {
-  primary: "#2563eb",
-  accent: "#d97706",
-  accentDeep: "#92400e",
-  ink: "#1e293b",
+  primary: "#1e3a5f",
+  accent: "#b8892b",
+  accentDeep: "#7a5a17",
+  ink: "#1c1c1a",
 };
 
 const ERROR_MESSAGES = {
@@ -46,12 +47,12 @@ export default async function SettingsPage({ searchParams }) {
 
   return (
     <div className="flex flex-col gap-6 p-4 md:p-6">
-      <h1 className="text-lg font-semibold text-brand-ink">Settings</h1>
+      <Masthead>Settings</Masthead>
 
       {errorMessage && (
         <p
           role="alert"
-          className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800"
+          className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800"
         >
           {errorMessage}
         </p>
@@ -59,7 +60,7 @@ export default async function SettingsPage({ searchParams }) {
 
       <section id="chapter" className="flex flex-col gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-brand-ink">Chapter</h2>
+          <h2 className="text-[15px] font-semibold text-brand-ink">Chapter</h2>
           <p className="mt-0.5 text-xs text-brand-ink/75">
             Your name and colors, used across the app and on your calendar export.
             Saved here, so you never have to touch your hosting settings to change them.
@@ -68,7 +69,7 @@ export default async function SettingsPage({ searchParams }) {
 
         <form
           action={saveBrandingAction}
-          className="flex flex-col gap-4 rounded-xl border border-brand-ink/10 bg-white p-4 shadow-sm"
+          className="flex flex-col gap-4 rounded-md border border-paper-line bg-background p-4 shadow-[var(--shadow-resting)]"
         >
           <label className={`${labelClass} max-w-sm`}>
             Chapter name
@@ -103,7 +104,7 @@ export default async function SettingsPage({ searchParams }) {
 
           <button
             type="submit"
-            className="self-start rounded-md border border-brand-ink/20 px-3 py-1.5 text-sm text-brand-ink hover:bg-brand-ink/5"
+            className="self-start rounded-sm border border-brand-ink/20 px-3 py-1.5 text-sm text-brand-ink transition-colors hover:bg-brand-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
           >
             Save chapter details
           </button>
@@ -112,19 +113,19 @@ export default async function SettingsPage({ searchParams }) {
 
       <section id="semesters" className="flex flex-col gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-brand-ink">Semesters</h2>
+          <h2 className="text-[15px] font-semibold text-brand-ink">Semesters</h2>
           <p className="mt-0.5 text-xs text-brand-ink/75">
             Each semester has its own events, contacts, and budget cap. Add one every
             term and switch between them from the Calendar and Budget tabs.
           </p>
         </div>
 
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col divide-y divide-paper-line overflow-hidden rounded-md border border-paper-line bg-background shadow-[var(--shadow-resting)]">
           {sorted.map((semester) => (
             <form
               key={semester.id}
               action={updateSemesterAction}
-              className="flex flex-wrap items-end gap-3 rounded-xl border border-brand-ink/10 bg-white p-3 shadow-sm"
+              className="flex flex-wrap items-end gap-3 p-3"
             >
               <input type="hidden" name="semesterId" value={semester.id} />
               <label className={`${labelClass} min-w-40 flex-1`}>
@@ -170,7 +171,7 @@ export default async function SettingsPage({ searchParams }) {
               <div className="flex items-center gap-2">
                 <button
                   type="submit"
-                  className="rounded-md border border-brand-ink/20 px-3 py-1.5 text-sm text-brand-ink hover:bg-brand-ink/5"
+                  className="rounded-sm border border-brand-ink/20 px-3 py-1.5 text-sm text-brand-ink transition-colors hover:bg-brand-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
                 >
                   Save
                 </button>
@@ -186,7 +187,7 @@ export default async function SettingsPage({ searchParams }) {
 
         <form
           action={createSemesterAction}
-          className="flex flex-wrap items-end gap-3 rounded-xl border border-dashed border-brand-ink/20 bg-brand-ink/[0.015] p-3"
+          className="flex flex-wrap items-end gap-3 rounded-md border border-dashed border-brand-ink/20 bg-brand-ink/[0.015] p-3"
         >
           <label className={`${labelClass} min-w-40 flex-1`}>
             New semester name
@@ -218,7 +219,7 @@ export default async function SettingsPage({ searchParams }) {
           </label>
           <button
             type="submit"
-            className="rounded-md bg-brand-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+            className="rounded-sm bg-brand-primary px-3 py-1.5 text-sm font-semibold text-brand-primary-ink transition-all duration-150 hover:brightness-110 active:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
           >
             Add semester
           </button>
@@ -227,7 +228,7 @@ export default async function SettingsPage({ searchParams }) {
 
       <section id="passcode" className="flex flex-col gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-brand-ink">Shared passcode</h2>
+          <h2 className="text-[15px] font-semibold text-brand-ink">Shared passcode</h2>
           <p className="mt-0.5 text-xs text-brand-ink/75">
             The one passcode your whole exec board logs in with. Change it when
             officers turn over, or if it ends up somewhere it shouldn&apos;t.
@@ -239,7 +240,7 @@ export default async function SettingsPage({ searchParams }) {
         {savedPasscode && (
           <p
             role="status"
-            className="rounded-lg border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-800"
+            className="rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-800"
           >
             Passcode updated. Everyone else has been signed out.
           </p>
@@ -247,7 +248,7 @@ export default async function SettingsPage({ searchParams }) {
 
         <form
           action={updatePasscodeAction}
-          className="flex flex-wrap items-end gap-3 rounded-xl border border-brand-ink/10 bg-white p-3 shadow-sm"
+          className="flex flex-wrap items-end gap-3 rounded-md border border-paper-line bg-background p-3 shadow-[var(--shadow-resting)]"
         >
           <label className={`${labelClass} min-w-44 flex-1`}>
             New passcode
@@ -273,7 +274,7 @@ export default async function SettingsPage({ searchParams }) {
           </label>
           <button
             type="submit"
-            className="rounded-md border border-brand-ink/20 px-3 py-1.5 text-sm text-brand-ink hover:bg-brand-ink/5"
+            className="rounded-sm border border-brand-ink/20 px-3 py-1.5 text-sm text-brand-ink transition-colors hover:bg-brand-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
           >
             Change passcode
           </button>

@@ -10,6 +10,7 @@ import {
 } from "@/lib/budget";
 import { equipmentItemsForSemester } from "@/lib/equipment";
 import { SemesterSwitcher } from "@/components/SemesterSwitcher";
+import { Masthead } from "@/components/Masthead";
 import { BudgetCategoryPieChart } from "@/components/BudgetCategoryPieChart";
 import { EquipmentEditorProvider } from "@/components/EquipmentEditorProvider";
 import { AddEquipmentButton } from "@/components/AddEquipmentButton";
@@ -144,16 +145,19 @@ export default async function BudgetPage({
       otherSpendExpectedCents={otherSpendExpectedCents}
     >
     <div className="flex flex-col gap-6 p-4 md:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <SemesterSwitcher
-          semesters={semesters}
-          selectedId={semester.id}
-          basePath="/budget"
-        />
+      <div className="flex flex-wrap items-end justify-between gap-3 pb-1">
+        <div className="flex flex-wrap items-center gap-3">
+          <Masthead as="h2">{semester.label}</Masthead>
+          <SemesterSwitcher
+            semesters={semesters}
+            selectedId={semester.id}
+            basePath="/budget"
+          />
+        </div>
 
         <form
           action={updateMaxBudgetAction}
-          className="flex items-center gap-2 rounded-lg border border-brand-ink/15 bg-white px-3 py-1.5 text-sm shadow-sm"
+          className="flex items-center gap-2 rounded-sm border border-brand-ink/20 px-3 py-1.5 text-sm"
         >
           <input type="hidden" name="semesterId" value={semester.id} />
           <label className="text-brand-ink/75">Max budget ($)</label>
@@ -163,11 +167,11 @@ export default async function BudgetPage({
             min="0"
             name="maxBudget"
             defaultValue={(semester.maxBudgetCents / 100).toFixed(2)}
-            className="w-28 rounded-md border border-brand-ink/20 px-2 py-1 outline-none focus:border-brand-primary"
+            className="tabular-figures w-28 rounded-sm border border-brand-ink/20 px-2 py-1 outline-none transition-colors focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15"
           />
           <button
             type="submit"
-            className="rounded-md border border-brand-ink/20 px-3 py-1 text-brand-ink hover:bg-brand-ink/5"
+            className="rounded-sm border border-brand-ink/20 px-3 py-1 text-brand-ink transition-colors hover:bg-brand-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
           >
             Save
           </button>
@@ -175,34 +179,38 @@ export default async function BudgetPage({
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="rounded-xl border border-brand-ink/10 bg-white p-5 shadow-sm">
-          <div className="text-sm text-brand-ink/75">Semester Expected Spend</div>
-          <div className="mt-1 text-3xl font-semibold text-brand-ink">
+        <div className="rounded-md border border-paper-line bg-background p-5 shadow-[var(--shadow-resting)]">
+          <div className="text-xs font-semibold tracking-wide text-brand-ink/60 uppercase">
+            Semester Expected Spend
+          </div>
+          <div className="tabular-figures mt-1 text-3xl font-bold text-brand-ink">
             {centsToDisplay(budget.expectedSpendCents)}
           </div>
-          <div className="mt-1 text-xs text-brand-ink/75">
+          <div className="tabular-figures mt-1 text-xs text-brand-ink/75">
             {expectedPct}% of {centsToDisplay(semester.maxBudgetCents)} cap
           </div>
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-brand-ink/10">
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-paper-line">
             <div
               className={`h-full ${expectedPct >= 90 ? "bg-red-600" : "bg-brand-primary"}`}
-              style={{ width: `${Math.min(expectedPct, 100)}%` }}
+              style={{ width: `${Math.max(0, Math.min(expectedPct, 100))}%` }}
             />
           </div>
         </div>
 
-        <div className="rounded-xl border border-brand-ink/10 bg-white p-5 shadow-sm">
-          <div className="text-sm text-brand-ink/75">Semester Actual Spend</div>
-          <div className="mt-1 text-3xl font-semibold text-brand-ink">
+        <div className="rounded-md border border-paper-line bg-background p-5 shadow-[var(--shadow-resting)]">
+          <div className="text-xs font-semibold tracking-wide text-brand-ink/60 uppercase">
+            Semester Actual Spend
+          </div>
+          <div className="tabular-figures mt-1 text-3xl font-bold text-brand-ink">
             {centsToDisplay(budget.actualSpendCents)}
           </div>
-          <div className="mt-1 text-xs text-brand-ink/75">
+          <div className="tabular-figures mt-1 text-xs text-brand-ink/75">
             {actualPct}% of {centsToDisplay(semester.maxBudgetCents)} cap
           </div>
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-brand-ink/10">
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-paper-line">
             <div
               className={`h-full ${actualPct >= 90 ? "bg-red-600" : "bg-brand-primary"}`}
-              style={{ width: `${Math.min(actualPct, 100)}%` }}
+              style={{ width: `${Math.max(0, Math.min(actualPct, 100))}%` }}
             />
           </div>
         </div>
@@ -211,8 +219,8 @@ export default async function BudgetPage({
       <BudgetCategoryPieChart slices={pieSlicesWithPct} totalCents={pieTotalCents} />
 
       {alerts.length > 0 && (
-        <details className="group rounded-xl border border-amber-300/60 bg-amber-50/60 open:bg-amber-50">
-          <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium text-amber-900 marker:content-none">
+        <details className="group overflow-hidden rounded-md border border-amber-300/70 bg-amber-50/60 shadow-[var(--shadow-resting)] open:bg-amber-50">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-semibold text-amber-900 transition-colors hover:bg-amber-100/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-600/50 marker:content-none">
             <span aria-hidden className="text-amber-600">⚠</span>
             {alerts.length} {alerts.length === 1 ? "item needs" : "items need"} attention
             <span className="ml-auto text-xs text-amber-800 group-open:hidden">show</span>
@@ -227,7 +235,7 @@ export default async function BudgetPage({
                   <Link
                     key={i}
                     href={`/calendar?semester=${semester.id}&month=${linkedEvent.startDate.slice(0, 7)}&event=${linkedEvent.id}`}
-                    className="block hover:text-brand-primary hover:underline"
+                    className="block transition-colors hover:text-brand-primary hover:underline"
                   >
                     {message}
                   </Link>
@@ -238,7 +246,7 @@ export default async function BudgetPage({
                   <EquipmentItemLink
                     key={i}
                     id={alert.equipmentId}
-                    className="block text-left hover:text-brand-primary hover:underline"
+                    className="block text-left transition-colors hover:text-brand-primary hover:underline"
                   >
                     {message}
                   </EquipmentItemLink>
@@ -251,32 +259,32 @@ export default async function BudgetPage({
       )}
 
       <div className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold text-brand-ink">Per-event detail</h2>
+        <h2 className="text-[15px] font-semibold text-brand-ink">Per-event detail</h2>
 
         {/* Desktop/tablet: table. Below md, a table squishes badges and names — use cards instead. */}
-        <div className="hidden overflow-hidden rounded-xl border border-brand-ink/10 bg-white shadow-sm md:block">
+        <div className="hidden overflow-hidden rounded-md border border-paper-line shadow-[var(--shadow-resting)] md:block">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-brand-ink/10 bg-brand-ink/[0.03] text-left text-brand-ink/75">
-                <th className="p-3 font-medium">Event</th>
-                <th className="p-3 font-medium">Category</th>
-                <th className="p-3 font-medium">Expected</th>
-                <th className="p-3 font-medium">Actual</th>
+              <tr className="bg-brand-ink/[0.04] text-left text-brand-ink/75">
+                <th className="p-3 text-xs font-semibold tracking-wide uppercase">Event</th>
+                <th className="p-3 text-xs font-semibold tracking-wide uppercase">Category</th>
+                <th className="p-3 text-right text-xs font-semibold tracking-wide uppercase">Expected</th>
+                <th className="p-3 text-right text-xs font-semibold tracking-wide uppercase">Actual</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, i) => (
+              {rows.map((row) => (
                 <tr
                   key={row.event.id}
-                  className={`border-b border-brand-ink/5 last:border-0 ${i % 2 === 1 ? "bg-brand-ink/[0.015]" : ""}`}
+                  className="border-b border-paper-line bg-background transition-colors last:border-0 hover:bg-surface-2"
                 >
                   <td className="p-3">
-                    <Link href={row.href} className="text-brand-ink hover:text-brand-primary hover:underline">
+                    <Link href={row.href} className="text-brand-ink transition-colors hover:text-brand-primary hover:underline">
                       {row.event.name}
                     </Link>
                   </td>
                   <td className="p-3 text-brand-ink/75">{row.categoryLabel}</td>
-                  <td className="p-3 text-brand-ink/75">
+                  <td className="tabular-figures p-3 text-right text-brand-ink/75">
                     {row.expectedDisplay}
                     {row.capPct !== null && (
                       <span
@@ -287,34 +295,31 @@ export default async function BudgetPage({
                       </span>
                     )}
                     {row.pending && (
-                      <span className="ml-1.5 rounded-full bg-brand-accent/15 px-1.5 py-0.5 text-[11px] text-brand-accent-deep">
+                      <span className="ml-1.5 rounded-full bg-brand-accent/25 px-1.5 py-0.5 text-[11px] font-semibold text-brand-accent-deep">
                         pending approval
                       </span>
                     )}
                   </td>
-                  <td className="p-3 text-brand-ink/75">{row.actualDisplay}</td>
+                  <td className="tabular-figures p-3 text-right text-brand-ink/75">{row.actualDisplay}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
 
-        <div className="flex flex-col gap-2 md:hidden">
+        <div className="flex flex-col divide-y divide-paper-line overflow-hidden rounded-md border border-paper-line shadow-[var(--shadow-resting)] md:hidden">
           {rows.map((row) => (
-            <div
-              key={row.event.id}
-              className="rounded-xl border border-brand-ink/10 bg-white p-3 shadow-sm"
-            >
+            <div key={row.event.id} className="bg-background p-3 transition-colors active:bg-surface-2">
               <div className="flex items-start justify-between gap-2">
                 <Link
                   href={row.href}
-                  className="font-medium text-brand-ink hover:text-brand-primary hover:underline"
+                  className="font-medium text-brand-ink transition-colors hover:text-brand-primary hover:underline"
                 >
                   {row.event.name}
                 </Link>
                 <span className="shrink-0 pt-0.5 text-xs text-brand-ink/75">{row.categoryLabel}</span>
               </div>
-              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-brand-ink/75">
+              <div className="tabular-figures mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-brand-ink/75">
                 <span>Expected: {row.expectedDisplay}</span>
                 <span>Actual: {row.actualDisplay}</span>
               </div>
@@ -322,14 +327,14 @@ export default async function BudgetPage({
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {row.capPct !== null && (
                     <span
-                      className="rounded-full bg-brand-ink/[0.06] px-1.5 py-0.5 text-[11px] text-brand-ink/75"
+                      className="tabular-figures rounded-full bg-brand-ink/[0.06] px-1.5 py-0.5 text-[11px] text-brand-ink/75"
                       title="Share of the semester max budget"
                     >
                       {row.capPct}% of cap
                     </span>
                   )}
                   {row.pending && (
-                    <span className="rounded-full bg-brand-accent/15 px-1.5 py-0.5 text-[11px] text-brand-accent-deep">
+                    <span className="rounded-full bg-brand-accent/25 px-1.5 py-0.5 text-[11px] font-semibold text-brand-accent-deep">
                       pending approval
                     </span>
                   )}
@@ -342,36 +347,36 @@ export default async function BudgetPage({
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-brand-ink">Equipment</h2>
+          <h2 className="text-[15px] font-semibold text-brand-ink">Equipment</h2>
           <AddEquipmentButton />
         </div>
 
         {equipmentRows.length === 0 ? (
-          <div className="rounded-xl border border-brand-ink/10 bg-white p-5 text-sm text-brand-ink/50 shadow-sm">
+          <div className="rounded-md border border-paper-line p-5 text-sm text-brand-ink/50 shadow-[var(--shadow-resting)]">
             No equipment on the wishlist yet.
           </div>
         ) : (
           <>
             {/* Desktop/tablet: table. Below md, a table squishes badges and names — use cards instead. */}
-            <div className="hidden overflow-hidden rounded-xl border border-brand-ink/10 bg-white shadow-sm md:block">
+            <div className="hidden overflow-hidden rounded-md border border-paper-line shadow-[var(--shadow-resting)] md:block">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-brand-ink/10 bg-brand-ink/[0.03] text-left text-brand-ink/60">
-                    <th className="p-3 font-medium">Item</th>
-                    <th className="p-3 font-medium">Expected</th>
-                    <th className="p-3 font-medium">Actual</th>
+                  <tr className="bg-brand-ink/[0.04] text-left text-brand-ink/75">
+                    <th className="p-3 text-xs font-semibold tracking-wide uppercase">Item</th>
+                    <th className="p-3 text-right text-xs font-semibold tracking-wide uppercase">Expected</th>
+                    <th className="p-3 text-right text-xs font-semibold tracking-wide uppercase">Actual</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {equipmentRows.map((row, i) => (
+                  {equipmentRows.map((row) => (
                     <tr
                       key={row.item.id}
-                      className={`border-b border-brand-ink/5 last:border-0 ${i % 2 === 1 ? "bg-brand-ink/[0.015]" : ""}`}
+                      className="border-b border-paper-line bg-background transition-colors last:border-0 hover:bg-surface-2"
                     >
                       <td className="p-3">
                         <EquipmentItemLink
                           id={row.item.id}
-                          className="text-left text-brand-ink hover:text-brand-primary hover:underline"
+                          className="text-left text-brand-ink transition-colors hover:text-brand-primary hover:underline"
                         >
                           {row.item.name}
                         </EquipmentItemLink>
@@ -380,13 +385,13 @@ export default async function BudgetPage({
                             href={row.item.link}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="ml-1.5 text-xs text-brand-ink/40 hover:text-brand-primary"
+                            className="ml-1.5 text-xs text-brand-ink/40 transition-colors hover:text-brand-primary"
                           >
                             link ↗
                           </a>
                         )}
                       </td>
-                      <td className="p-3 text-brand-ink/70">
+                      <td className="tabular-figures p-3 text-right text-brand-ink/75">
                         {row.expectedDisplay}
                         {row.capPct !== null && (
                           <span
@@ -397,28 +402,25 @@ export default async function BudgetPage({
                           </span>
                         )}
                         {row.pending && (
-                          <span className="ml-1.5 rounded-full bg-brand-accent/15 px-1.5 py-0.5 text-[11px] text-brand-accent-deep">
+                          <span className="ml-1.5 rounded-full bg-brand-accent/25 px-1.5 py-0.5 text-[11px] font-semibold text-brand-accent-deep">
                             pending approval
                           </span>
                         )}
                       </td>
-                      <td className="p-3 text-brand-ink/70">{row.actualDisplay}</td>
+                      <td className="tabular-figures p-3 text-right text-brand-ink/75">{row.actualDisplay}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            <div className="flex flex-col gap-2 md:hidden">
+            <div className="flex flex-col divide-y divide-paper-line overflow-hidden rounded-md border border-paper-line shadow-[var(--shadow-resting)] md:hidden">
               {equipmentRows.map((row) => (
-                <div
-                  key={row.item.id}
-                  className="rounded-xl border border-brand-ink/10 bg-white p-3 shadow-sm"
-                >
+                <div key={row.item.id} className="bg-background p-3 transition-colors active:bg-surface-2">
                   <div className="flex items-start justify-between gap-2">
                     <EquipmentItemLink
                       id={row.item.id}
-                      className="text-left font-medium text-brand-ink hover:text-brand-primary hover:underline"
+                      className="text-left font-medium text-brand-ink transition-colors hover:text-brand-primary hover:underline"
                     >
                       {row.item.name}
                     </EquipmentItemLink>
@@ -427,13 +429,13 @@ export default async function BudgetPage({
                         href={row.item.link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="shrink-0 pt-0.5 text-xs text-brand-ink/40 hover:text-brand-primary"
+                        className="shrink-0 pt-0.5 text-xs text-brand-ink/40 transition-colors hover:text-brand-primary"
                       >
                         link ↗
                       </a>
                     )}
                   </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-brand-ink/70">
+                  <div className="tabular-figures mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-brand-ink/70">
                     <span>Expected: {row.expectedDisplay}</span>
                     <span>Actual: {row.actualDisplay}</span>
                   </div>
@@ -441,14 +443,14 @@ export default async function BudgetPage({
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       {row.capPct !== null && (
                         <span
-                          className="rounded-full bg-brand-ink/[0.06] px-1.5 py-0.5 text-[11px] text-brand-ink/60"
+                          className="tabular-figures rounded-full bg-brand-ink/[0.06] px-1.5 py-0.5 text-[11px] text-brand-ink/60"
                           title="Share of the semester max budget"
                         >
                           {row.capPct}% of cap
                         </span>
                       )}
                       {row.pending && (
-                        <span className="rounded-full bg-brand-accent/15 px-1.5 py-0.5 text-[11px] text-brand-accent-deep">
+                        <span className="rounded-full bg-brand-accent/25 px-1.5 py-0.5 text-[11px] font-semibold text-brand-accent-deep">
                           pending approval
                         </span>
                       )}

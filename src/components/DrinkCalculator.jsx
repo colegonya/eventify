@@ -28,7 +28,7 @@ export function DrinkCalculator({
   const total = rows.reduce((sum, row) => sum + row.qty * row.price, 0);
 
   const cellInput =
-    "rounded-md border border-brand-ink/20 px-2 py-1 text-right text-sm outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15";
+    "tabular-figures rounded-sm border border-brand-ink/20 px-2 py-1 text-right text-sm outline-none transition-colors focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15";
 
   // Items just added this session render here immediately, ahead of the
   // server round-trip that adds them to `groups` for good.
@@ -115,25 +115,25 @@ export function DrinkCalculator({
   );
 
   return (
-    <div className="rounded-lg border border-brand-ink/15 bg-white">
+    <div className="overflow-hidden rounded-md border border-paper-line bg-background shadow-[var(--shadow-resting)]">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium text-brand-ink"
+        className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium text-brand-ink transition-colors hover:bg-surface-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 focus-visible:ring-inset"
       >
         Drink & supply calculator
         <span className="text-xs font-normal text-brand-ink/75">{open ? "Hide" : "Show"}</span>
       </button>
 
       {open && (
-        <div className="flex flex-col gap-3 border-t border-brand-ink/10 p-3">
+        <div className="flex flex-col gap-3 border-t border-paper-line p-3">
           {hasTypicalOrder && (
             <button
               type="button"
               onClick={() =>
                 setRows((rs) => rs.map((r) => ({ ...r, qty: typicalOrder[r.id] ?? 0 })))
               }
-              className="self-start rounded-lg border border-brand-primary/30 bg-brand-primary/5 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-primary/10"
+              className="self-start rounded-sm border border-brand-primary/30 bg-brand-primary/5 px-3 py-1.5 text-xs font-medium text-brand-primary transition-colors hover:bg-brand-primary/10"
             >
               Autofill? <span className="font-normal text-brand-primary/70">(typical {categoryLabel} order)</span>
             </button>
@@ -146,7 +146,7 @@ export function DrinkCalculator({
           </div>
           {groups.map((group) => (
             <div key={group.id} className="flex flex-col gap-1.5">
-              <span className="self-start rounded-md bg-brand-ink/10 px-2 py-1 text-xs font-bold uppercase tracking-wide text-brand-ink">
+              <span className="self-start rounded-xs bg-brand-ink/10 px-2 py-1 text-xs font-bold uppercase tracking-wide text-brand-ink">
                 {group.label}
               </span>
               {group.items.map((groupItem) => {
@@ -158,7 +158,7 @@ export function DrinkCalculator({
 
           {pendingRows.length > 0 && (
             <div className="flex flex-col gap-1.5">
-              <span className="self-start rounded-md bg-brand-ink/10 px-2 py-1 text-xs font-bold uppercase tracking-wide text-brand-ink">
+              <span className="self-start rounded-xs bg-brand-ink/10 px-2 py-1 text-xs font-bold uppercase tracking-wide text-brand-ink">
                 Just added
               </span>
               {pendingRows.map((row) => renderRow(row, rows.findIndex((r) => r.id === row.id)))}
@@ -166,7 +166,7 @@ export function DrinkCalculator({
           )}
 
           {showAddItem ? (
-            <div className="flex flex-col gap-2 rounded-lg border border-brand-ink/10 bg-brand-ink/[0.02] p-3">
+            <div className="flex flex-col gap-2 bg-surface-1 p-3">
               <div className="grid grid-cols-[1fr_5rem] gap-2">
                 <input
                   type="text"
@@ -174,7 +174,7 @@ export function DrinkCalculator({
                   onChange={(e) => setNewItemName(e.target.value)}
                   placeholder="Item name"
                   aria-label="New item name"
-                  className="rounded-md border border-brand-ink/20 px-2 py-1 text-sm outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15"
+                  className="rounded-sm border border-brand-ink/20 px-2 py-1 text-sm outline-none transition-colors focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15"
                 />
                 <div className="relative">
                   <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-sm text-brand-ink/40">
@@ -196,7 +196,7 @@ export function DrinkCalculator({
                 value={newItemGroupId}
                 onChange={(e) => setNewItemGroupId(e.target.value)}
                 aria-label="New item group"
-                className="rounded-md border border-brand-ink/20 px-2 py-1 text-sm outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15"
+                className="rounded-sm border border-brand-ink/20 px-2 py-1 text-sm outline-none transition-colors focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15"
               >
                 {groups.map((group) => (
                   <option key={group.id} value={group.id}>
@@ -212,7 +212,7 @@ export function DrinkCalculator({
                     setShowAddItem(false);
                     setAddItemError(null);
                   }}
-                  className="rounded-lg px-3 py-1.5 text-xs font-medium text-brand-ink/75 hover:text-brand-ink"
+                  className="rounded-sm px-3 py-1.5 text-xs font-medium text-brand-ink/75 transition-colors hover:text-brand-ink"
                 >
                   Cancel
                 </button>
@@ -220,7 +220,7 @@ export function DrinkCalculator({
                   type="button"
                   disabled={isPending}
                   onClick={handleAddItem}
-                  className="rounded-lg bg-brand-primary px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-brand-primary/90 disabled:opacity-60"
+                  className="rounded-sm bg-brand-primary px-3 py-1.5 text-xs font-semibold text-brand-primary-ink transition-all duration-150 hover:brightness-110 active:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:opacity-60"
                 >
                   {isPending ? "Adding…" : "Add item"}
                 </button>
@@ -231,20 +231,20 @@ export function DrinkCalculator({
               <button
                 type="button"
                 onClick={() => setShowAddItem(true)}
-                className="self-start text-sm font-medium text-brand-primary hover:underline"
+                className="self-start text-sm font-medium text-brand-primary transition-colors hover:underline"
               >
                 + Add item
               </button>
             )
           )}
 
-          <div className="flex items-center justify-between border-t border-brand-ink/10 pt-2 text-sm font-medium text-brand-ink">
+          <div className="tabular-figures flex items-center justify-between border-t border-paper-line pt-2 text-sm font-medium text-brand-ink">
             <span>Total: ${total.toFixed(2)}</span>
             <button
               type="button"
               disabled={total === 0}
               onClick={() => onUseTotal(total.toFixed(2))}
-              className="rounded-lg bg-brand-primary px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-brand-primary/90 disabled:opacity-40"
+              className="rounded-sm bg-brand-primary px-3 py-1.5 text-xs font-semibold text-brand-primary-ink transition-all duration-150 hover:brightness-110 active:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:opacity-40"
             >
               Use as expected spend
             </button>

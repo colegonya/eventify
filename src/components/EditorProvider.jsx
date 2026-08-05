@@ -161,7 +161,7 @@ export function EditorProvider({
       {children}
       {open && (
         <div
-          className="fixed inset-0 z-50 overflow-y-auto bg-brand-ink/40 p-4 backdrop-blur-sm"
+          className="animate-scrim-in fixed inset-0 z-50 overflow-y-auto bg-brand-ink/40 p-4 backdrop-blur-sm"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) close();
           }}
@@ -172,7 +172,7 @@ export function EditorProvider({
             aria-modal="true"
             aria-labelledby="event-editor-title"
             tabIndex={-1}
-            className="mx-auto my-8 w-full max-w-2xl outline-none"
+            className="animate-panel-in mx-auto my-8 w-full max-w-2xl outline-none"
           >
             <EventForm
               key={eventId ?? "new"}

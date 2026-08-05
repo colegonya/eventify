@@ -65,7 +65,7 @@ export function DrinkGroupsEditor({ groups }) {
   };
 
   const input =
-    "rounded-md border border-brand-ink/20 bg-white px-2 py-1.5 text-sm text-brand-ink outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15";
+    "rounded-sm border border-brand-ink/20 bg-background px-2 py-1.5 text-sm text-brand-ink outline-none transition-colors focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15";
 
   return (
     <div className="flex flex-col gap-3">
@@ -92,7 +92,7 @@ export function DrinkGroupsEditor({ groups }) {
           {rows.map((group) => (
             <div
               key={group.id}
-              className="flex flex-col gap-3 rounded-xl border border-brand-ink/10 bg-white p-4 shadow-sm"
+              className="flex flex-col gap-3 rounded-md border border-paper-line bg-background p-4 shadow-[var(--shadow-resting)]"
             >
               <input
                 type="text"
@@ -132,7 +132,7 @@ export function DrinkGroupsEditor({ groups }) {
                     <button
                       type="button"
                       onClick={() => removeItem(group.id, item.id)}
-                      className="shrink-0 text-sm text-brand-ink/75 hover:text-brand-primary"
+                      className="shrink-0 text-sm text-brand-ink/75 transition-colors hover:text-brand-primary"
                     >
                       Remove
                     </button>
@@ -144,7 +144,7 @@ export function DrinkGroupsEditor({ groups }) {
                 <button
                   type="button"
                   onClick={() => addItem(group.id)}
-                  className="text-sm font-medium text-brand-primary hover:underline"
+                  className="text-sm font-medium text-brand-primary transition-colors hover:underline"
                 >
                   + Add item
                 </button>
@@ -161,7 +161,7 @@ export function DrinkGroupsEditor({ groups }) {
                     <button
                       type="button"
                       onClick={() => setConfirmDeleteId(null)}
-                      className="font-medium text-brand-ink/75 hover:text-brand-ink"
+                      className="font-medium text-brand-ink/75 transition-colors hover:text-brand-ink"
                     >
                       Cancel
                     </button>
@@ -170,7 +170,7 @@ export function DrinkGroupsEditor({ groups }) {
                   <button
                     type="button"
                     onClick={() => setConfirmDeleteId(group.id)}
-                    className="text-xs text-brand-ink/75 hover:text-brand-primary"
+                    className="text-xs text-brand-ink/75 transition-colors hover:text-brand-primary"
                   >
                     Delete group
                   </button>
@@ -184,7 +184,7 @@ export function DrinkGroupsEditor({ groups }) {
           <button
             type="button"
             onClick={addGroup}
-            className="self-start text-sm font-medium text-brand-primary hover:underline"
+            className="self-start text-sm font-medium text-brand-primary transition-colors hover:underline"
           >
             + Add group
           </button>

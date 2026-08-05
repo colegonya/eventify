@@ -23,7 +23,7 @@ export function DeleteSemesterButton({ label, action, disabled }) {
         );
         if (!ok) e.preventDefault();
       }}
-      className="rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:border-brand-ink/10 disabled:text-brand-ink/30 disabled:hover:bg-transparent"
+      className="rounded-sm border border-red-300 px-3 py-1.5 text-sm text-red-700 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:border-brand-ink/10 disabled:text-brand-ink/30 disabled:hover:bg-transparent"
     >
       Delete
     </button>

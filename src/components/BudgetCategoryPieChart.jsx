@@ -136,7 +136,7 @@ export function BudgetCategoryPieChart({ slices, totalCents }) {
   const active = activeIndex !== null ? arcs[activeIndex] : null;
 
   return (
-    <div className="flex flex-col items-center gap-4 rounded-xl border border-brand-ink/10 bg-white p-5 shadow-sm sm:flex-row sm:items-stretch sm:justify-center">
+    <div className="flex flex-col items-center gap-4 rounded-md border border-paper-line p-5 shadow-[var(--shadow-resting)] sm:flex-row sm:items-stretch sm:justify-center">
       <svg
         viewBox={`0 0 ${SIZE} ${SIZE}`}
         className="aspect-square w-full max-w-[510px] shrink-0"
@@ -188,7 +188,7 @@ export function BudgetCategoryPieChart({ slices, totalCents }) {
               />
               <span className="text-sm font-semibold text-brand-ink">{active.category}</span>
             </div>
-            <div className="text-2xl font-semibold text-brand-ink">
+            <div className="tabular-figures text-2xl font-bold text-brand-ink">
               {centsToDisplay(active.amountCents)}
             </div>
             <div className="text-xs text-brand-ink/75">
@@ -198,7 +198,7 @@ export function BudgetCategoryPieChart({ slices, totalCents }) {
         ) : (
           <>
             <div className="text-sm text-brand-ink/75">Expected spend by category</div>
-            <div className="text-2xl font-semibold text-brand-ink">
+            <div className="tabular-figures text-2xl font-bold text-brand-ink">
               {centsToDisplay(totalCents)}
             </div>
             <div className="text-xs text-brand-ink/75">Hover a slice for details</div>

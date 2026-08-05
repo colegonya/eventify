@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import { ensureDefaults, getBrandingSettings } from "@/lib/data";
 import { completeSetupAction } from "@/lib/actions";
+import { Masthead } from "@/components/Masthead";
 
 const fieldClass =
-  "rounded-lg border border-brand-ink/20 px-3 py-2 text-sm outline-none focus:border-brand-primary";
+  "rounded-sm border border-brand-ink/20 bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15";
 const labelClass = "flex flex-col gap-1.5 text-xs font-medium text-brand-ink/75";
 
 const ERROR_MESSAGES = {
@@ -27,8 +28,8 @@ export default async function SetupPage({ searchParams }) {
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col gap-5 p-6">
       <div>
-        <h1 className="text-lg font-semibold text-brand-ink">Set up your calendar</h1>
-        <p className="mt-1 text-sm text-brand-ink/75">
+        <Masthead>Set up your calendar</Masthead>
+        <p className="mt-2 text-sm text-brand-ink/75">
           Two things to fill in and you&apos;re done. You can change all of it later
           from the Settings tab, and add more semesters as terms go by.
         </p>
@@ -37,7 +38,7 @@ export default async function SetupPage({ searchParams }) {
       {errorMessage && (
         <p
           role="alert"
-          className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800"
+          className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800"
         >
           {errorMessage}
         </p>
@@ -95,7 +96,7 @@ export default async function SetupPage({ searchParams }) {
           </span>
         </label>
 
-        <label className="flex items-start gap-2.5 rounded-lg border border-brand-ink/15 bg-brand-ink/[0.015] p-3 text-sm">
+        <label className="flex items-start gap-2.5 rounded-md border border-paper-line bg-brand-ink/[0.015] p-3 text-sm shadow-[var(--shadow-resting)]">
           <input
             type="checkbox"
             name="exampleData"
@@ -112,7 +113,7 @@ export default async function SetupPage({ searchParams }) {
 
         <button
           type="submit"
-          className="rounded-lg bg-brand-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:opacity-90"
+          className="rounded-sm bg-brand-primary px-4 py-2.5 text-sm font-semibold text-brand-primary-ink transition-all duration-150 hover:brightness-110 active:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
         >
           Create semester
         </button>

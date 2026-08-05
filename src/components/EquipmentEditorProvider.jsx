@@ -88,12 +88,12 @@ export function EquipmentEditorProvider({
       {children}
       {open && (
         <div
-          className="fixed inset-0 z-50 overflow-y-auto bg-brand-ink/40 p-4 backdrop-blur-sm"
+          className="animate-scrim-in fixed inset-0 z-50 overflow-y-auto bg-brand-ink/40 p-4 backdrop-blur-sm"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) close();
           }}
         >
-          <div className="mx-auto my-8 w-full max-w-2xl">
+          <div className="animate-panel-in mx-auto my-8 w-full max-w-2xl">
             <EquipmentForm
               key={itemId ?? "new"}
               semesterId={semesterId}

@@ -1,6 +1,7 @@
 import { getContacts } from "@/lib/data";
 import { requireSemesters } from "@/lib/setup";
 import { SemesterSwitcher } from "@/components/SemesterSwitcher";
+import { Masthead } from "@/components/Masthead";
 import { ContactsTable } from "@/components/ContactsTable";
 
 export default async function ContactsPage({
@@ -23,8 +24,8 @@ export default async function ContactsPage({
 
   return (
     <div className="flex flex-col gap-6 p-4 md:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-lg font-semibold text-brand-ink">Contacts</h1>
+      <div className="flex flex-wrap items-end justify-between gap-3 pb-1">
+        <Masthead>Contacts</Masthead>
         <SemesterSwitcher
           semesters={semesters}
           selectedId={semester.id}

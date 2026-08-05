@@ -43,10 +43,9 @@ export function EquipmentForm({
   const remainingPct = pctOfCap(remainingCents, maxBudgetCents);
 
   const input =
-    "rounded-lg border border-brand-ink/20 bg-white px-3 py-2 text-sm text-brand-ink shadow-sm outline-none transition-colors placeholder:text-brand-ink/30 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15";
+    "rounded-sm border border-brand-ink/20 bg-background px-3 py-2 text-sm text-brand-ink outline-none transition-colors placeholder:text-brand-ink/30 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15";
   const label = "flex flex-col gap-1.5 text-sm text-brand-ink";
-  const sectionLegend =
-    "px-1 text-xs font-semibold uppercase tracking-wide text-brand-ink/50";
+  const sectionLegend = "px-1 text-[15px] font-semibold text-brand-ink";
 
   return (
     <form
@@ -58,19 +57,19 @@ export function EquipmentForm({
           onClose();
         });
       }}
-      className="mx-auto flex max-w-2xl flex-col gap-5 rounded-xl border border-brand-ink/10 bg-white p-5 shadow-sm md:p-7"
+      className="mx-auto flex max-w-2xl flex-col gap-5 rounded-lg border border-paper-line bg-background p-5 shadow-[var(--shadow-overlay)] md:p-7"
     >
       <input type="hidden" name="semesterId" value={semesterId} />
       {item && <input type="hidden" name="id" value={item.id} />}
 
-      <div className="flex items-center justify-between border-b border-brand-ink/10 pb-4">
-        <h2 className="text-lg font-semibold text-brand-ink">
+      <div className="flex items-center justify-between border-b border-paper-line pb-4">
+        <h2 className="text-xl font-bold tracking-tight text-brand-ink">
           {item ? "Edit Equipment" : "Add Equipment"}
         </h2>
         <button
           type="button"
           onClick={onClose}
-          className="text-sm text-brand-ink/50 hover:text-brand-primary hover:underline"
+          className="text-sm text-brand-ink/50 transition-colors hover:text-brand-primary hover:underline"
         >
           Close ✕
         </button>
@@ -104,7 +103,7 @@ export function EquipmentForm({
         />
       </label>
 
-      <fieldset className="flex flex-col gap-4 rounded-lg border border-brand-ink/15 bg-brand-ink/[0.02] p-4">
+      <fieldset className="flex flex-col gap-4 border-t border-paper-line pt-4">
         <legend className={sectionLegend}>Budget</legend>
 
         <div className="grid grid-cols-2 gap-4">
@@ -132,7 +131,7 @@ export function EquipmentForm({
         </div>
 
         {expectedCostInput && (
-          <div className="-mt-2 rounded-md bg-brand-ink/[0.03] px-3 py-2 text-xs text-brand-ink/70">
+          <div className="tabular-figures -mt-2 px-1 text-xs text-brand-ink/70">
             {maxBudgetCents > 0 ? (
               <>
                 {thisItemPct}% of cap · Semester total: {centsToDisplay(projectedTotalCents)} (
@@ -176,7 +175,7 @@ export function EquipmentForm({
                 onClick={() =>
                   setLineItems((items) => items.filter((_, i) => i !== index))
                 }
-                className="text-sm text-brand-ink/40 hover:text-brand-primary"
+                className="text-sm text-brand-ink/40 transition-colors hover:text-brand-primary"
               >
                 Remove
               </button>
@@ -190,7 +189,7 @@ export function EquipmentForm({
                 { key: `new-${nextLineItemKey++}`, name: "", amountCents: 0 },
               ])
             }
-            className="self-start text-sm font-medium text-brand-primary hover:underline"
+            className="self-start text-sm font-medium text-brand-primary transition-colors hover:underline"
           >
             + Add line item
           </button>
@@ -202,11 +201,11 @@ export function EquipmentForm({
         <textarea name="notes" rows={3} defaultValue={item?.notes} className={input} />
       </label>
 
-      <div className="flex items-center justify-between border-t border-brand-ink/10 pt-5">
+      <div className="flex items-center justify-between border-t border-paper-line pt-5">
         <button
           type="submit"
           disabled={isPending}
-          className="rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-primary/90 disabled:opacity-60"
+          className="rounded-sm bg-brand-primary px-4 py-2 text-sm font-semibold text-brand-primary-ink transition-all duration-150 hover:brightness-110 active:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:opacity-60"
         >
           {isPending ? "Saving…" : "Save item"}
         </button>
@@ -215,7 +214,7 @@ export function EquipmentForm({
           <button
             type="button"
             onClick={() => setConfirmingDelete(true)}
-            className="rounded-lg border border-brand-ink/20 px-4 py-2 text-sm text-brand-ink hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+            className="rounded-sm border border-brand-ink/20 px-4 py-2 text-sm text-brand-ink transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
           >
             Delete item
           </button>
@@ -233,14 +232,14 @@ export function EquipmentForm({
                   onClose();
                 })
               }
-              className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
+              className="rounded-sm bg-red-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:opacity-60"
             >
               {isPending ? "Deleting…" : "Confirm delete"}
             </button>
             <button
               type="button"
               onClick={() => setConfirmingDelete(false)}
-              className="rounded-lg border border-brand-ink/20 px-3 py-2 text-sm text-brand-ink"
+              className="rounded-sm border border-brand-ink/20 px-3 py-2 text-sm text-brand-ink transition-colors hover:bg-brand-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
             >
               Cancel
             </button>

@@ -16,7 +16,7 @@ export function SemesterSwitcher({
   return (
     <select
       aria-label="Select semester"
-      value={selectedId}
+      value={selectedId ?? ""}
       onChange={(e) =>
         router.push(
           e.target.value === MANAGE
@@ -24,7 +24,7 @@ export function SemesterSwitcher({
             : `${basePath}?semester=${e.target.value}`,
         )
       }
-      className="rounded-lg border border-brand-ink/20 bg-white px-3 py-1.5 text-sm text-brand-ink shadow-sm outline-none transition-colors focus:border-brand-primary"
+      className="rounded-sm border border-brand-ink/25 bg-background px-3 py-1.5 text-sm font-medium text-brand-ink outline-none transition-colors focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15"
     >
       {semesters.map((s) => (
         <option key={s.id} value={s.id}>

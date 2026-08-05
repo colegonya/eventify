@@ -1,21 +1,41 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f6f3;
-  --foreground: #171717;
+  /* Paper ground — a wall-planner sheet, not a SaaS-gray canvas. */
+  --background: #f6f5f2;
+  --foreground: #1c1c1a;
+
+  /* Every hairline rule (grid lines, row dividers, input borders at rest)
+     reads off this one token instead of re-deriving an opacity per element. */
+  --color-paper-line: #dedbd3;
 
   /* Default brand palette — edit these to your chapter's colors. */
-  --color-brand-primary: #2563eb;
-  --color-brand-accent: #d97706;
+  --color-brand-primary: #1e3a5f;
+  --color-brand-accent: #b8892b;
   /* Deep step of the accent (its tonal-ramp shade), for accent-colored text on
      an accent tint — the base accent fails AA there; this clears it. */
-  --color-brand-accent-deep: #92400e;
-  --color-brand-ink: #1e293b;
+  --color-brand-accent-deep: #7a5a17;
+  --color-brand-ink: #1c1c1a;
+  /* Text/icon color for anything filled with brand-primary. layout.jsx
+     overrides this per request with a real contrast computation against the
+     resolved primary (custom or default); this is only the pre-hydration
+     fallback for the default primary above. */
+  --color-brand-primary-ink: #ffffff;
+
+  /* Two deliberate background-layering steps, replacing ad hoc bg-brand-ink/[…]
+     opacity fractions scattered per component. surface-1 separates chrome
+     (header, table header rows) from content; surface-2 is the hover/active
+     tint for rows and panels that stay flat rather than lifting on shadow. */
+  --color-surface-1: rgba(28, 28, 26, 0.035);
+  --color-surface-2: rgba(28, 28, 26, 0.06);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-paper-line: var(--color-paper-line);
+  --color-surface-1: var(--color-surface-1);
+  --color-surface-2: var(--color-surface-2);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
@@ -23,10 +43,54 @@
   --color-brand-accent: var(--color-brand-accent);
   --color-brand-accent-deep: var(--color-brand-accent-deep);
   --color-brand-ink: var(--color-brand-ink);
+  --color-brand-primary-ink: var(--color-brand-primary-ink);
+
+  /* Two registers: 0px stays reserved for literal ledger/grid geometry (the
+     calendar grid, table row rules) — everything else gets a real step so it
+     reads as a surface, not a rectangle drawn with a ruler. */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* lifted/overlay are genuine state shadows (drag, modal). resting/hover are
+     the new depth register for non-ledger panels — both stay low enough not
+     to read as a SaaS-card shadow. */
+  --shadow-resting: 0 1px 2px rgba(28, 28, 26, 0.05);
+  --shadow-hover: 0 2px 6px rgba(28, 28, 26, 0.1);
+  --shadow-lifted: 0 6px 16px rgba(28, 28, 26, 0.18);
+  --shadow-overlay: 0 12px 32px rgba(28, 28, 26, 0.22);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Every figure standing for money or a count aligns on this. */
+.tabular-figures {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Modal/dialog entrance — plays once on mount since the scrim and panel are
+   conditionally rendered, not toggled. Exit stays an instant unmount: a
+   volunteer closing out of a form should never wait on an animation. */
+@keyframes scrim-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.99);
+  }
+}
+.animate-scrim-in {
+  animation: scrim-in 150ms ease-out;
+}
+.animate-panel-in {
+  animation: panel-in 150ms ease-out;
 }

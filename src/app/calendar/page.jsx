@@ -21,6 +21,7 @@ import {
 import { buildCalendarHref } from "@/lib/calendarUrl";
 import { SemesterSwitcher } from "@/components/SemesterSwitcher";
 import { Legend, LegendDropdown } from "@/components/Legend";
+import { Masthead } from "@/components/Masthead";
 import { DayCell } from "@/components/DayCell";
 import { EditorProvider } from "@/components/EditorProvider";
 import { AddEventButton } from "@/components/AddEventButton";
@@ -160,10 +161,10 @@ export default async function CalendarPage({
   const toggle = (label, href, active) => (
     <Link
       href={href}
-      className={`rounded-md px-2.5 py-1 text-sm transition-colors ${
+      className={`px-2.5 py-1 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset ${
         active
-          ? "bg-brand-primary font-medium text-white"
-          : "text-brand-ink hover:bg-brand-ink/5"
+          ? "bg-brand-primary text-brand-primary-ink focus-visible:ring-brand-primary-ink"
+          : "text-brand-ink hover:bg-brand-ink/5 focus-visible:ring-brand-primary"
       }`}
     >
       {label}
@@ -185,42 +186,37 @@ export default async function CalendarPage({
     >
     <div className="flex h-full flex-col gap-3 p-3 pb-[max(3rem,calc(env(safe-area-inset-bottom)+2.5rem))] md:p-4">
       {showOnboardingChecklist && <OnboardingChecklist />}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3 pb-1">
         <div className="flex flex-wrap items-center gap-3">
-          <SemesterSwitcher semesters={semesters} selectedId={semester.id} />
-
-          <div className="flex items-center gap-2">
+          <Masthead as="h2">{rangeLabel}</Masthead>
+          <div className="flex items-center gap-1">
             <Link
               href={prevHref}
               aria-label="Previous month"
-              className="rounded-lg border border-brand-ink/20 bg-white px-2.5 py-1.5 text-sm text-brand-ink shadow-sm hover:bg-brand-ink/5"
+              className="rounded-sm px-2 py-1.5 text-sm text-brand-ink/75 transition-colors hover:bg-brand-ink/5 hover:text-brand-ink"
             >
               <span aria-hidden>←</span>
-              <span className="hidden sm:inline"> Prev</span>
             </Link>
-            <span className="min-w-24 text-center text-sm font-semibold text-brand-ink sm:min-w-40">
-              {rangeLabel}
-            </span>
             <Link
               href={nextHref}
               aria-label="Next month"
-              className="rounded-lg border border-brand-ink/20 bg-white px-2.5 py-1.5 text-sm text-brand-ink shadow-sm hover:bg-brand-ink/5"
+              className="rounded-sm px-2 py-1.5 text-sm text-brand-ink/75 transition-colors hover:bg-brand-ink/5 hover:text-brand-ink"
             >
-              <span className="hidden sm:inline">Next </span>
               <span aria-hidden>→</span>
             </Link>
           </div>
+          <SemesterSwitcher semesters={semesters} selectedId={semester.id} />
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="flex rounded-lg border border-brand-ink/20 bg-white p-0.5 shadow-sm">
+          <div className="flex overflow-hidden rounded-sm border border-brand-ink/20">
             {toggle("Month", monthToggleHref, view === "month")}
             {toggle("Week", weekToggleHref, view === "week")}
           </div>
           <a
             href={`/calendar/export?semester=${semester.id}`}
             aria-label="Export .ics"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-brand-ink/20 bg-white px-3 py-1.5 text-sm text-brand-ink shadow-sm hover:bg-brand-ink/5"
+            className="inline-flex items-center gap-1.5 rounded-sm border border-brand-ink/20 px-3 py-1.5 text-sm text-brand-ink transition-colors hover:bg-brand-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
           >
             <svg
               aria-hidden
@@ -246,7 +242,7 @@ export default async function CalendarPage({
       <Legend categories={categories} />
 
       <div
-        className={`grid min-h-0 flex-1 gap-px rounded-xl border border-brand-ink/10 bg-brand-ink/10 text-xs shadow-sm ${
+        className={`grid min-h-0 flex-1 gap-px border border-paper-line bg-paper-line text-xs ${
           view === "week"
             ? "grid-cols-[repeat(7,minmax(220px,1fr))] overflow-x-auto overflow-y-hidden md:grid-cols-7"
             : "grid-cols-[repeat(7,minmax(110px,1fr))] overflow-x-auto overflow-y-hidden md:grid-cols-7 md:overflow-hidden"
@@ -256,7 +252,7 @@ export default async function CalendarPage({
         {WEEKDAY_LABELS.map((label) => (
           <div
             key={label}
-            className="bg-brand-ink/[0.04] p-1.5 text-center font-medium text-brand-ink/75"
+            className="bg-brand-ink/[0.04] p-1.5 text-center text-[11px] font-semibold tracking-wide text-brand-ink/75 uppercase"
           >
             {label}
           </div>
