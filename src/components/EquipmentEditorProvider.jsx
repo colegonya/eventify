@@ -7,9 +7,28 @@ import {
   useEffect,
   useMemo,
 } from "react";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import { EquipmentForm } from "@/components/EquipmentForm";
 import { computeEquipmentContribution } from "@/lib/budget";
+
+function EquipmentFormSkeleton() {
+  return (
+    <div className="mx-auto flex max-w-2xl flex-col gap-5 rounded-lg border border-paper-line bg-background p-5 shadow-[var(--shadow-overlay)] md:p-7">
+      <div className="h-6 w-40 animate-pulse rounded-sm bg-brand-ink/10" />
+      <div className="h-24 w-full animate-pulse rounded-sm bg-brand-ink/10" />
+      <div className="h-24 w-full animate-pulse rounded-sm bg-brand-ink/10" />
+    </div>
+  );
+}
+
+// EquipmentForm is only ever rendered behind `open &&` below, but a static
+// import would still ship its JS to every /budget visit whether the dialog
+// opens or not. Loaded on demand instead — see EditorProvider.jsx for why
+// this keeps `ssr: true` (the default) rather than `ssr: false`.
+const EquipmentForm = dynamic(
+  () => import("@/components/EquipmentForm").then((mod) => mod.EquipmentForm),
+  { loading: EquipmentFormSkeleton },
+);
 
 const EquipmentEditorContext = createContext(null);
 

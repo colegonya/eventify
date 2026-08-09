@@ -8,10 +8,33 @@ import {
   useMemo,
   useRef,
 } from "react";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import { EventForm } from "@/components/EventForm";
 import { computeSemesterBudget } from "@/lib/budget";
 import { buildCalendarHref } from "@/lib/calendarUrl";
+
+function EventFormSkeleton() {
+  return (
+    <div className="mx-auto flex max-w-2xl flex-col gap-5 rounded-lg border border-paper-line bg-background p-5 shadow-[var(--shadow-overlay)] md:p-7">
+      <div className="h-6 w-40 animate-pulse rounded-sm bg-brand-ink/10" />
+      <div className="h-24 w-full animate-pulse rounded-sm bg-brand-ink/10" />
+      <div className="h-40 w-full animate-pulse rounded-sm bg-brand-ink/10" />
+    </div>
+  );
+}
+
+// EventForm (and the DrinkCalculator it pulls in) is only ever rendered
+// behind `open &&` below, but a static import would still ship its JS to
+// every /calendar visit whether the dialog opens or not. Loaded on demand
+// instead. Keep `ssr: true` (the default) rather than reaching for
+// `ssr: false` to trim it further — a Budget-page alert can deep-link to
+// `/calendar?...&event=X` with the dialog already open on first load, and
+// that still needs to render inline in the server HTML, not flash in after
+// hydration.
+const EventForm = dynamic(
+  () => import("@/components/EventForm").then((mod) => mod.EventForm),
+  { loading: EventFormSkeleton },
+);
 
 const EditorContext = createContext(null);
 
