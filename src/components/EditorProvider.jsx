@@ -7,11 +7,14 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
+  useTransition,
 } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { computeSemesterBudget } from "@/lib/budget";
 import { buildCalendarHref } from "@/lib/calendarUrl";
+import { getEditorSupportingDataAction } from "@/lib/actions";
 
 function EventFormSkeleton() {
   return (
@@ -50,15 +53,15 @@ export function EditorProvider({
   events,
   chapterName,
   semesterId,
+  semesterIds,
   maxBudgetCents,
   month,
   categories,
-  categorySpendStats,
-  drinkPresets,
-  drinkItemGroups,
-  // Equipment counts against the same semester cap as events, so it needs to
-  // factor into the "remaining" preview shown while editing an event.
-  equipmentExpectedCents = 0,
+  // Only set when the page loaded with the editor already open (a deep-linked
+  // ?event=/?new= URL) — the server fetched the editor's supporting data
+  // up front for that case. See the fetch effect below for why this needs to
+  // suppress that first client-side fetch rather than just seeding state.
+  initialEditorData = null,
   children,
 }) {
   const searchParams = useSearchParams();
@@ -164,6 +167,45 @@ export function EditorProvider({
     };
   }, [open]);
 
+  // Drink presets/groups, categorySpendStats, and equipmentExpectedCents —
+  // only consumed inside the dialog below — are fetched on demand when it
+  // opens instead of on every calendar view. Warm the EventForm chunk in
+  // parallel with the data fetch (dynamic() already lazy-loads it, but
+  // waiting to reference <EventForm> until data is ready would otherwise
+  // serialize the two); the actual mount still waits on `editorData`, since
+  // DrinkCalculator seeds its row state from `drinkItemGroups` only once, on
+  // mount, and wouldn't pick up the real groups if it mounted early on an
+  // empty placeholder.
+  const [editorData, setEditorData] = useState(initialEditorData);
+  // A deep-linked page load lands here with `open` already true on the very
+  // first render, and initialEditorData already holding what the server
+  // fetched for it — skip that one fetch so hydration doesn't blank the
+  // server-rendered form back to a skeleton just to re-fetch the same data.
+  // Gated on `open` too, not just `initialEditorData`: the page fetches that
+  // data speculatively off the URL alone (?event=/?new= present), so a stale
+  // ?event=<bad-id> link can hand us real initialEditorData while `open`
+  // still correctly computes false — that data went unused, and shouldn't
+  // make a later *genuine* open skip fetching fresh data for itself.
+  const skipNextFetch = useRef(open && initialEditorData !== null);
+  const [, startTransition] = useTransition();
+  useEffect(() => {
+    if (!open) return;
+    if (skipNextFetch.current) {
+      skipNextFetch.current = false;
+      return;
+    }
+    let cancelled = false;
+    import("@/components/EventForm");
+    startTransition(async () => {
+      setEditorData(null);
+      const data = await getEditorSupportingDataAction(semesterId, semesterIds);
+      if (!cancelled) setEditorData(data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, semesterId, semesterIds]);
+
   // Budget for the form's live headroom preview, excluding the event being
   // edited so its own spend isn't double-counted.
   const otherEventsExpectedCents = useMemo(() => {
@@ -171,8 +213,8 @@ export function EditorProvider({
     const thisContribution = editingEvent
       ? budget.perEvent.get(editingEvent.id)?.expectedContributionCents ?? 0
       : 0;
-    return budget.expectedSpendCents - thisContribution + equipmentExpectedCents;
-  }, [events, categoriesById, editingEvent, equipmentExpectedCents]);
+    return budget.expectedSpendCents - thisContribution + (editorData?.equipmentExpectedCents ?? 0);
+  }, [events, categoriesById, editingEvent, editorData]);
 
   const value = useMemo(
     () => ({ openEvent, openNew, close }),
@@ -197,20 +239,24 @@ export function EditorProvider({
             tabIndex={-1}
             className="animate-panel-in mx-auto my-8 w-full max-w-2xl outline-none"
           >
-            <EventForm
-              key={eventId ?? "new"}
-              semesterId={semesterId}
-              chapterName={chapterName}
-              event={editingEvent}
-              defaultDate={date ?? `${month}-01`}
-              maxBudgetCents={maxBudgetCents}
-              otherEventsExpectedCents={otherEventsExpectedCents}
-              categories={categories}
-              categorySpendStats={categorySpendStats}
-              drinkPresets={drinkPresets}
-              drinkItemGroups={drinkItemGroups}
-              onClose={close}
-            />
+            {editorData ? (
+              <EventForm
+                key={eventId ?? "new"}
+                semesterId={semesterId}
+                chapterName={chapterName}
+                event={editingEvent}
+                defaultDate={date ?? `${month}-01`}
+                maxBudgetCents={maxBudgetCents}
+                otherEventsExpectedCents={otherEventsExpectedCents}
+                categories={categories}
+                categorySpendStats={editorData.categorySpendStats}
+                drinkPresets={editorData.drinkPresets}
+                drinkItemGroups={editorData.drinkItemGroups}
+                onClose={close}
+              />
+            ) : (
+              <EventFormSkeleton />
+            )}
           </div>
         </div>
       )}

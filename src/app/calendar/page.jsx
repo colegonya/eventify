@@ -1,9 +1,7 @@
 import Link from "next/link";
-import { getCalendarPageData, getBrandingSettings, isOnboardingChecklistDismissed } from "@/lib/data";
+import { getCalendarGridData, getBrandingSettings, isOnboardingChecklistDismissed } from "@/lib/data";
 import { requireSemesters } from "@/lib/setup";
 import { computeConflicts } from "@/lib/conflicts";
-import { computeCategorySpendStats, computeEquipmentContribution } from "@/lib/budget";
-import { equipmentItemsForSemester } from "@/lib/equipment";
 import {
   getMonthGridDates,
   getWeekGridDates,
@@ -19,6 +17,7 @@ import {
   eventDatesInRange,
 } from "@/lib/dates";
 import { buildCalendarHref } from "@/lib/calendarUrl";
+import { getEditorSupportingDataAction } from "@/lib/actions";
 import { SemesterSwitcher } from "@/components/SemesterSwitcher";
 import { Legend, LegendDropdown } from "@/components/Legend";
 import { Masthead } from "@/components/Masthead";
@@ -45,6 +44,7 @@ export default async function CalendarPage({
 
   const semester =
     semesters.find((s) => s.id === params.semester) ?? semesters[0];
+  const semesterIds = semesters.map((s) => s.id);
 
   // Default landing month: once the semester is close (within a week of its
   // start), open to today's month; before then — e.g. checking over the
@@ -55,25 +55,30 @@ export default async function CalendarPage({
   const defaultMonth = todayIso >= nearStartIso ? todayIso.slice(0, 7) : semester.startDate.slice(0, 7);
   const month = params.month ?? defaultMonth;
 
+  // A Budget-page alert can deep-link here with the editor already open
+  // (?event=X or ?new=1). When the URL suggests that, fetch the editor's
+  // supporting data server-side too, alongside the grid data rather than
+  // after it, so the dialog still renders inline in the first response
+  // instead of flashing from a skeleton after hydration. This only checks
+  // the URL, not whether ?event= actually names a real event (confirming
+  // that needs `events`, which would make this fetch wait on the grid fetch
+  // instead of running alongside it) — a stale/bad ?event= link just means
+  // this fetch goes unused, no worse than the fetch EditorProvider would
+  // otherwise make lazily once the editor is opened client-side.
+  const mightOpenEditorOnLoad = Boolean(params.event) || params.new !== undefined;
+
   const [
-    { events, gameDays, allEvents, drinkPresets, drinkItemGroups, equipmentItems, categories },
+    { events, gameDays, categories },
     { chapterName },
     showOnboardingChecklist,
+    initialEditorData,
   ] = await Promise.all([
-    getCalendarPageData(
-      semester.id,
-      semesters.map((s) => s.id),
-    ),
+    getCalendarGridData(semester.id),
     getBrandingSettings(),
     isOnboardingChecklistDismissed().then((dismissed) => !dismissed),
+    mightOpenEditorOnLoad ? getEditorSupportingDataAction(semester.id, semesterIds) : Promise.resolve(null),
   ]);
   const categoriesById = new Map(categories.map((c) => [c.id, c]));
-  const categorySpendStats = Object.fromEntries(computeCategorySpendStats(allEvents));
-
-  const equipmentExpectedCents = equipmentItemsForSemester(equipmentItems, semester.id).reduce(
-    (sum, item) => sum + computeEquipmentContribution(item).expectedContributionCents,
-    0,
-  );
 
   const conflicts = computeConflicts(events, chapterName);
 
@@ -176,13 +181,11 @@ export default async function CalendarPage({
       events={events}
       chapterName={chapterName}
       semesterId={semester.id}
+      semesterIds={semesterIds}
       maxBudgetCents={semester.maxBudgetCents}
       month={month}
       categories={categories}
-      categorySpendStats={categorySpendStats}
-      drinkPresets={drinkPresets}
-      drinkItemGroups={drinkItemGroups}
-      equipmentExpectedCents={equipmentExpectedCents}
+      initialEditorData={initialEditorData}
     >
     <div className="flex h-full flex-col gap-3 p-3 pb-[max(3rem,calc(env(safe-area-inset-bottom)+2.5rem))] md:p-4">
       {showOnboardingChecklist && <OnboardingChecklist />}

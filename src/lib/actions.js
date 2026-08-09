@@ -27,6 +27,7 @@ import {
   saveCategories,
   getCategories,
   dismissOnboardingChecklist,
+  getEditorSupportingData,
 } from "@/lib/data";
 import { parseISODate, formatISODate, addDays } from "@/lib/dates";
 import {
@@ -37,6 +38,8 @@ import {
   MIN_PASSCODE_LENGTH,
 } from "@/lib/auth";
 import { BRAND_COLOR_VARS } from "@/lib/config";
+import { computeCategorySpendStats, computeEquipmentContribution } from "@/lib/budget";
+import { equipmentItemsForSemester } from "@/lib/equipment";
 
 const AUTH_COOKIE_OPTIONS = {
   httpOnly: true,
@@ -98,6 +101,26 @@ function parseActualSpend(formData) {
     items.push({ id: crypto.randomUUID(), name, amountCents });
   }
   return items;
+}
+
+// Called directly from EditorProvider (a client component) when the event
+// editor dialog opens, the same way DayCell calls moveEventAction directly —
+// not tied to a <form>. Computes the editor's supporting figures server-side
+// (categorySpendStats, equipmentExpectedCents) rather than shipping every
+// semester's raw event history to the client to recompute them there.
+export async function getEditorSupportingDataAction(semesterId, semesterIds) {
+  const { drinkPresets, drinkItemGroups, equipmentItems, allEvents } = await getEditorSupportingData(
+    semesterId,
+    semesterIds,
+  );
+
+  const categorySpendStats = Object.fromEntries(computeCategorySpendStats(allEvents));
+  const equipmentExpectedCents = equipmentItemsForSemester(equipmentItems, semesterId).reduce(
+    (sum, item) => sum + computeEquipmentContribution(item).expectedContributionCents,
+    0,
+  );
+
+  return { drinkPresets, drinkItemGroups, categorySpendStats, equipmentExpectedCents };
 }
 
 export async function saveEventAction(formData) {

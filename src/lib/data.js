@@ -261,38 +261,56 @@ export async function saveCategories(categories) {
   invalidateCache(CATEGORIES_KEY);
 }
 
-// Bundles every read the calendar page needs into a single pipelined Redis
-// request (one HTTP round trip) instead of ~7+ separate ones. `semesterIds`
-// is every known semester, used to build the cross-semester event list for
-// budget stats; it deliberately includes `semesterId` again so the shape
-// stays a simple positional destructure, at the cost of that one key being
-// fetched twice within the same round trip.
-export async function getCalendarPageData(
-  semesterId,
-  semesterIds,
-) {
+// Bundles the reads the calendar grid needs on every visit into a single
+// pipelined Redis request: this semester's events/game days, plus categories
+// for the Legend. Deliberately excludes drink presets/groups, equipment, and
+// other semesters' event history — those only feed the closed-by-default
+// event editor and are fetched on demand by getEditorSupportingData() once it
+// actually opens.
+export async function getCalendarGridData(semesterId) {
   const pipeline = kv.pipeline();
   pipeline.get(eventsKey(semesterId));
   pipeline.get(gameDaysKey(semesterId));
-  pipeline.get(DRINK_PRESETS_KEY);
-  pipeline.get(DRINK_GROUPS_KEY);
-  pipeline.get(EQUIPMENT_KEY);
   pipeline.get(CATEGORIES_KEY);
-  for (const id of semesterIds) {
-    pipeline.get(eventsKey(id));
-  }
 
-  const [events, gameDays, drinkPresets, drinkGroups, equipmentItems, categories, ...perSemesterEvents] =
-    await pipeline.exec();
+  const [events, gameDays, categories] = await pipeline.exec();
 
   return {
     events: events ?? [],
     gameDays: gameDays ?? [],
+    categories: categories ?? [],
+  };
+}
+
+// The event editor's supporting data: drink presets/groups for the drink
+// calculator and every semester's event history for categorySpendStats (the
+// "typically runs $X" hint). `semesterIds` is every known semester, used to
+// build the cross-semester event list; it deliberately includes `semesterId`
+// again so the shape stays a simple loop, at the cost of that one key being
+// fetched twice within the same round trip. Only called once the editor
+// dialog opens, since a semester with many semesters' worth of history would
+// otherwise pay this cost on every calendar view for a dialog most visits
+// never open.
+export async function getEditorSupportingData(
+  semesterId,
+  semesterIds,
+) {
+  const pipeline = kv.pipeline();
+  pipeline.get(DRINK_PRESETS_KEY);
+  pipeline.get(DRINK_GROUPS_KEY);
+  pipeline.get(EQUIPMENT_KEY);
+  for (const id of semesterIds) {
+    pipeline.get(eventsKey(id));
+  }
+
+  const [drinkPresets, drinkGroups, equipmentItems, ...perSemesterEvents] =
+    await pipeline.exec();
+
+  return {
     allEvents: perSemesterEvents.flatMap((e) => e ?? []),
     drinkPresets: drinkPresets ?? {},
     drinkItemGroups: drinkGroups ?? [],
     equipmentItems: equipmentItems ?? [],
-    categories: categories ?? [],
   };
 }
 
