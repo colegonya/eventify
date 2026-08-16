@@ -419,7 +419,7 @@ export function EventForm({
                 placeholder="0.00"
                 aria-label="Line item amount"
                 defaultValue={item.amountCents ? (item.amountCents / 100).toFixed(2) : ""}
-                className={`w-28 ${input}`}
+                className={`tabular-figures w-28 ${input}`}
               />
               <button
                 type="button"
