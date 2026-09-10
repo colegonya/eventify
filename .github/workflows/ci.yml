@@ -4,22 +4,31 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+
+# Only one event fires per commit: pull_request for branches, push for main.
+# The group still collapses superseded runs when commits land in quick
+# succession. head_ref (pull_request) and ref_name (push) are both the plain
+# branch name, so a branch keeps one group across both events.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
-  build:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - run: npm ci
 
       - run: npm run lint
+
+      - run: npm test
 
       - run: npm run build
         env:

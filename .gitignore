@@ -41,11 +41,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-
-
 # internal working notes, not for the public template
 HANDOFF.md
-
 
 .vercel
 .env*

@@ -188,7 +188,6 @@ export default async function CalendarPage({
       initialEditorData={initialEditorData}
     >
     <div className="flex h-full flex-col gap-3 p-3 pb-[max(3rem,calc(env(safe-area-inset-bottom)+2.5rem))] md:p-4">
-      {showOnboardingChecklist && <OnboardingChecklist />}
       <div className="flex flex-wrap items-end justify-between gap-3 pb-1">
         <div className="flex flex-wrap items-center gap-3">
           <Masthead as="h2">{rangeLabel}</Masthead>
@@ -241,6 +240,8 @@ export default async function CalendarPage({
           <LegendDropdown categories={categories} />
         </div>
       </div>
+
+      {showOnboardingChecklist && <OnboardingChecklist />}
 
       <Legend categories={categories} />
 

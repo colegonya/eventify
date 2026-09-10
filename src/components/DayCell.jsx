@@ -55,7 +55,7 @@ export function DayCell({
     >
       <div className="mb-0.5 flex shrink-0 items-center justify-between">
         <span
-          className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-medium ${
+          className={`tabular-figures inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-medium ${
             isToday
               ? "bg-brand-primary text-brand-primary-ink"
               : dimmed

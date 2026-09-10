@@ -10,7 +10,7 @@ const ITEMS = [
 
 export function OnboardingChecklist() {
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-brand-primary/30 bg-brand-primary/[0.04] p-4 shadow-[var(--shadow-resting)]">
+    <div className="flex flex-col gap-2 rounded-md border border-paper-line bg-background p-4 shadow-[var(--shadow-resting)]">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-[15px] font-semibold text-brand-ink">Get the most out of your calendar</h2>
