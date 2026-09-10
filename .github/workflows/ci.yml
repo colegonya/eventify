@@ -22,3 +22,9 @@ jobs:
       - run: npm run lint
 
       - run: npm run build
+        env:
+          # Placeholder values so the app's required-env-var check passes in CI.
+          # Real values live in Vercel's project settings, never here.
+          SITE_PASSCODE: ci-placeholder
+          UPSTASH_REDIS_REST_URL: https://placeholder.upstash.io
+          UPSTASH_REDIS_REST_TOKEN: ci-placeholder-token
