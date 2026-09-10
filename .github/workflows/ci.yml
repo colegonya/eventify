@@ -2,13 +2,13 @@ name: CI
 
 on:
   push:
-  pull_request:
     branches: [main]
+  pull_request:
 
-# A branch with an open PR fires both push and pull_request for the same
-# commit. head_ref (set on pull_request) and ref_name (set on push) are both
-# the plain branch name, so the two events share a group and the later one
-# cancels the earlier. Superseded runs on a branch get cancelled the same way.
+# Only one event fires per commit: pull_request for branches, push for main.
+# The group still collapses superseded runs when commits land in quick
+# succession. head_ref (pull_request) and ref_name (push) are both the plain
+# branch name, so a branch keeps one group across both events.
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
