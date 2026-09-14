@@ -6,6 +6,7 @@ import {
   centsToDisplay,
   computeContribution,
   isExcludedFromBudgetTotal,
+  needsBudgetApproval,
   pctOfCap,
 } from "@/lib/budget";
 import { DEFAULT_DURATION_MINUTES } from "@/lib/dates";
@@ -323,15 +324,24 @@ export function EventForm({
               className={input}
             />
           </label>
-          <label className="flex items-center gap-2 self-end pb-2 text-sm text-brand-ink">
-            <input
-              type="checkbox"
-              name="expectedSpendApproved"
-              defaultChecked={event?.expectedSpendApproval === "approved"}
-              className="h-4 w-4 accent-brand-primary"
-            />
-            Approved
-          </label>
+          {needsBudgetApproval(selectedCategory) ? (
+            <label className="flex items-center gap-2 self-end pb-2 text-sm text-brand-ink">
+              <input
+                type="checkbox"
+                name="expectedSpendApproved"
+                defaultChecked={event?.expectedSpendApproval === "approved"}
+                className="h-4 w-4 accent-brand-primary"
+              />
+              Approved
+            </label>
+          ) : (
+            // Nothing to approve in an excluded category, but keep an existing
+            // approval alive so moving the event back into a budgeted category
+            // doesn't silently reset it to pending.
+            event?.expectedSpendApproval === "approved" && (
+              <input type="hidden" name="expectedSpendApproved" value="on" />
+            )
+          )}
         </div>
 
         {expectedSpendInput && (

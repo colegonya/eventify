@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { computeSemesterBudget, computeAlerts } from "@/lib/budget";
+import {
+  computeSemesterBudget,
+  computeAlerts,
+  needsBudgetApproval,
+  isExpectedSpendPending,
+  capSharePct,
+} from "@/lib/budget";
 
 const categories = [
   { id: "darty", netsRevenue: false, excludeFromBudgetTotal: false, isOtherOrgCategory: false },
@@ -63,5 +69,66 @@ describe("computeAlerts", () => {
     expect(alerts).toContainEqual({ type: "cap-expected" });
     expect(alerts).toContainEqual({ type: "missing-expected", eventId: "unpriced", eventName: "Formal" });
     expect(alerts.some((a) => a.eventId === "theirs")).toBe(false);
+  });
+});
+
+describe("isExpectedSpendPending", () => {
+  it("never reports a pending approval for a category excluded from the budget", () => {
+    const rushEvent = event({
+      id: "rush",
+      category: "rush",
+      expectedSpendCents: 70000,
+      expectedSpendApproval: "pending",
+    });
+
+    expect(needsBudgetApproval(categoriesById.get("rush"))).toBe(false);
+    expect(isExpectedSpendPending(rushEvent, categoriesById.get("rush"))).toBe(false);
+  });
+
+  it("reports a pending approval for a budgeted category with spend entered", () => {
+    const mixerEvent = event({
+      id: "mixer",
+      category: "mixer",
+      expectedSpendCents: 70000,
+      expectedSpendApproval: "pending",
+    });
+
+    expect(needsBudgetApproval(categoriesById.get("mixer"))).toBe(true);
+    expect(isExpectedSpendPending(mixerEvent, categoriesById.get("mixer"))).toBe(true);
+  });
+
+  it("stays quiet until an expected spend is entered, and once approved", () => {
+    const base = { id: "mixer", category: "mixer" };
+    const category = categoriesById.get("mixer");
+
+    expect(
+      isExpectedSpendPending(event({ ...base, expectedSpendApproval: "pending" }), category),
+    ).toBe(false);
+    expect(
+      isExpectedSpendPending(
+        event({ ...base, expectedSpendCents: 70000, expectedSpendApproval: "approved" }),
+        category,
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("capSharePct", () => {
+  const maxBudgetCents = 900000;
+
+  it("hides the share for an excluded category and for a zero contribution", () => {
+    expect(capSharePct(70000, maxBudgetCents, categoriesById.get("rush"))).toBe(null);
+    expect(capSharePct(0, maxBudgetCents, categoriesById.get("mixer"))).toBe(null);
+    expect(capSharePct(null, maxBudgetCents, categoriesById.get("mixer"))).toBe(null);
+  });
+
+  it("applies the zero rule to equipment, which is passed no category", () => {
+    expect(capSharePct(0, maxBudgetCents)).toBe(null);
+    expect(capSharePct(90000, maxBudgetCents)).toBe(10);
+  });
+
+  it("reports the share for a budgeted category, negative contributions included", () => {
+    expect(capSharePct(90000, maxBudgetCents, categoriesById.get("mixer"))).toBe(10);
+    expect(capSharePct(-90000, maxBudgetCents, categoriesById.get("philanthropy"))).toBe(-10);
   });
 });
