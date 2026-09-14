@@ -55,6 +55,31 @@ export function isExcludedFromBudgetTotal(category) {
   return category?.excludeFromBudgetTotal ?? false;
 }
 
+// Approval gates spending against the semester cap. A category excluded from
+// the budget total never touches the cap, so its events have nothing to
+// approve — no pending badge, no approval control on the form.
+export function needsBudgetApproval(category) {
+  return !isExcludedFromBudgetTotal(category);
+}
+
+export function isExpectedSpendPending(event, category) {
+  return (
+    needsBudgetApproval(category) &&
+    event.expectedSpendCents !== null &&
+    event.expectedSpendApproval === "pending"
+  );
+}
+
+// The share-of-cap chip only earns its place when the line actually eats into
+// the cap: an excluded category never does, and a zero contribution (no spend
+// entered, or a cost fully netted out by revenue) has nothing to show. A
+// negative contribution does move the total, so it still reports. Equipment
+// calls this without a category, since it belongs to none.
+export function capSharePct(contributionCents, maxBudgetCents, category) {
+  if (isExcludedFromBudgetTotal(category) || !contributionCents) return null;
+  return pctOfCap(contributionCents, maxBudgetCents);
+}
+
 // Unlike events, equipment has no co-host share or revenue to net out — its
 // contribution is just its own cost.
 export function computeEquipmentContribution(item) {

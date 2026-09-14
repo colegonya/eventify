@@ -7,6 +7,8 @@ import {
   centsToDisplay,
   pctOfCap,
   alertMessage,
+  isExpectedSpendPending,
+  capSharePct,
 } from "@/lib/budget";
 import { equipmentItemsForSemester } from "@/lib/equipment";
 import { SemesterSwitcher } from "@/components/SemesterSwitcher";
@@ -92,10 +94,11 @@ export default async function BudgetPage({
 
   const rows = sortedEvents.map((event) => {
     const contribution = budget.perEvent.get(event.id);
-    const capPct =
-      event.expectedSpendCents !== null && contribution
-        ? pctOfCap(contribution.expectedContributionCents, semester.maxBudgetCents)
-        : null;
+    const capPct = capSharePct(
+      contribution?.expectedContributionCents ?? null,
+      semester.maxBudgetCents,
+      categoriesById.get(event.category),
+    );
     return {
       event,
       categoryLabel: categoriesById.get(event.category)?.label ?? "Uncategorized",
@@ -103,7 +106,7 @@ export default async function BudgetPage({
       expectedDisplay:
         event.expectedSpendCents === null ? "—" : centsToDisplay(event.expectedSpendCents),
       capPct,
-      pending: event.expectedSpendCents !== null && event.expectedSpendApproval === "pending",
+      pending: isExpectedSpendPending(event, categoriesById.get(event.category)),
       actualDisplay:
         contribution && contribution.baseActualCents > 0
           ? centsToDisplay(contribution.baseActualCents)
@@ -115,10 +118,12 @@ export default async function BudgetPage({
     .sort((a, b) => a.priority - b.priority)
     .map((item) => {
       const contribution = budget.perEquipment.get(item.id);
-      const capPct =
-        item.expectedCostCents !== null && contribution
-          ? pctOfCap(contribution.expectedContributionCents, semester.maxBudgetCents)
-          : null;
+      // No category argument: equipment belongs to no category, so only the
+      // zero-contribution half of the rule can apply to it.
+      const capPct = capSharePct(
+        contribution?.expectedContributionCents ?? null,
+        semester.maxBudgetCents,
+      );
       return {
         item,
         expectedDisplay:
