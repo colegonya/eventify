@@ -1,4 +1,5 @@
 import { getContacts } from "@/lib/data";
+import { formatISODate } from "@/lib/dates";
 import { requireSemesters } from "@/lib/setup";
 import { SemesterSwitcher } from "@/components/SemesterSwitcher";
 import { Masthead } from "@/components/Masthead";
@@ -32,7 +33,12 @@ export default async function ContactsPage({
           basePath="/contacts"
         />
       </div>
-      <ContactsTable key={semester.id} semesterId={semester.id} contacts={contacts} />
+      <ContactsTable
+        key={semester.id}
+        semesterId={semester.id}
+        contacts={contacts}
+        todayISO={formatISODate(new Date())}
+      />
     </div>
   );
 }

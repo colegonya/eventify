@@ -1,4 +1,4 @@
-import { CONFLICT_STYLES } from "@/lib/constants";
+import { CONFLICT_STYLES, CONFLICT_LABELS } from "@/lib/constants";
 import { contrastTextColor } from "@/lib/color";
 
 const FALLBACK_COLOR = "#64748b";
@@ -17,7 +17,9 @@ export function EventChip({
 
   return (
     <div
-      title={`${event.name} (${categoryLabel})${severity ? " — conflict" : ""}${tentative ? " — tentative, unconfirmed" : ""}`}
+      // Says which conflict this is, not just that there is one: red and amber
+      // mean different things and the chip is where an officer looks first.
+      title={`${event.name} (${categoryLabel})${severity ? ` — ${CONFLICT_LABELS[severity]}` : ""}${tentative ? " — tentative, unconfirmed" : ""}`}
       style={style}
       // Single-line truncation at every breakpoint. This used to be `truncate`
       // plus `md:line-clamp-2`, but -webkit-line-clamp never engaged (the

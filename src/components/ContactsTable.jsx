@@ -4,10 +4,26 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { CONTACT_STATUSES } from "@/types/contact";
 import { saveContactsAction } from "@/lib/actions";
 import { ContactStatusPicker } from "@/components/ContactStatusPicker";
+import { pastDueMeetingDays, summarizeContacts } from "@/lib/contacts";
 
 let nextRowKey = 0;
 
 const UNGROUPED = "Ungrouped";
+
+// Highlighter Gold at a real fill weight, per the accent's "one thing on the
+// view that most needs a second signal" role. A meeting whose date has come
+// and gone while the contact still reads "Meeting Set" is the one piece of
+// going-quiet the status pill cannot show on its own.
+function PastDueMeetingFlag({ contact, todayISO }) {
+  const days = pastDueMeetingDays(contact, todayISO);
+  if (days === null) return null;
+
+  return (
+    <span className="tabular-figures w-fit rounded-xs bg-brand-accent/35 px-1.5 py-0.5 text-[11px] font-semibold text-brand-accent-deep">
+      Meeting was {days} {days === 1 ? "day" : "days"} ago
+    </span>
+  );
+}
 
 function formatPhoneInput(raw) {
   const digits = raw.replace(/\D/g, "").slice(0, 10);
@@ -19,6 +35,9 @@ function formatPhoneInput(raw) {
 export function ContactsTable({
   semesterId,
   contacts,
+  // Stamped once on the server so the overdue math can't drift between the
+  // server render and the client's own clock.
+  todayISO,
 }) {
   const [isPending, startTransition] = useTransition();
   const [rows, setRows] = useState(() =>
@@ -100,6 +119,15 @@ export function ContactsTable({
     groups.get(org).push(row);
   }
 
+  // Recomputed from live rows, not from the server's copy, so the line tracks
+  // the edit an officer just made instead of the page they loaded.
+  const summary = summarizeContacts(rows, todayISO);
+  const summaryParts = [
+    summary.notReachedOut && `${summary.notReachedOut} not reached out`,
+    summary.awaitingReply && `${summary.awaitingReply} awaiting reply`,
+    summary.meetingPassed && `${summary.meetingPassed} meeting date passed`,
+  ].filter(Boolean);
+
   return (
     <form
       ref={formRef}
@@ -108,6 +136,12 @@ export function ContactsTable({
       className="flex flex-col gap-4"
     >
       <input type="hidden" name="semesterId" value={semesterId} />
+
+      {summaryParts.length > 0 && (
+        <p className="tabular-figures text-sm text-brand-ink/75">
+          {summaryParts.join(" · ")}
+        </p>
+      )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {groupOrder.map((org) => {
@@ -209,13 +243,25 @@ export function ContactsTable({
                       />
 
                       <div className="grid grid-cols-2 gap-2 items-start">
-                        <input
-                          type="date"
-                          name="contactMeetingDate"
-                          defaultValue={row.meetingDate ?? ""}
-                          aria-label="Meeting date"
-                          className={input}
-                        />
+                        <div className="flex flex-col gap-1">
+                          <input
+                            type="date"
+                            name="contactMeetingDate"
+                            // Controlled, unlike the other text fields: the
+                            // overdue flag below reads this value, so it has to
+                            // update as soon as the date changes.
+                            value={row.meetingDate ?? ""}
+                            onChange={(e) => {
+                              const meetingDate = e.target.value || null;
+                              setRows((rs) =>
+                                rs.map((r) => (r.key === row.key ? { ...r, meetingDate } : r)),
+                              );
+                            }}
+                            aria-label="Meeting date"
+                            className={input}
+                          />
+                          <PastDueMeetingFlag contact={row} todayISO={todayISO} />
+                        </div>
                         <textarea
                           name="contactNotes"
                           defaultValue={row.notes}
