@@ -8,7 +8,9 @@ web
 
 ## Users
 
-Exec board officers of a fraternity or sorority chapter (social chair, treasurer, president, and similar roles) who plan and run the chapter's semester of social events. They use it in short, frequent sessions, on both desktop (planning sessions) and phone (checking the calendar or budget on the go, at an event, or mid-conversation with another chapter's social chair). No technical background assumed; officers turn over every semester, so the tool must stay legible to a brand-new user with no handoff notes.
+Exec board officers of any organization that runs a calendar of events against a shared budget (social chair, treasurer, president, and similar roles). Fraternity and sorority chapters are the origin and still the best-served case, but student governments, clubs, non-profit boards, and company ERGs run the same shape of work and are explicitly in scope. They use it in short, frequent sessions, on both desktop (planning sessions) and phone (checking the calendar or budget on the go, at an event, or mid-conversation with a counterpart at another org). No technical background assumed; officers turn over every term, so the tool must stay legible to a brand-new user with no handoff notes.
+
+What an organization calls itself and calls a term are settings, not code (`src/lib/vocabulary.js`). Nothing user-facing should hardcode "chapter" or "semester" again.
 
 ## Product Purpose
 
@@ -16,7 +18,7 @@ A shared social calendar and budget tracker built around one specific planning w
 
 ## Positioning
 
-Not a generic calendar app with the labels swapped. It's shaped by the actual mechanics of Greek social planning that a generic tool has no concept of: same-day event conflict detection by severity, co-host budget netting, category-level budget exclusions (recruitment, other orgs' events), and a supply calculator with autofill presets per event category.
+Not a generic calendar app. It's shaped by mechanics a generic tool has no concept of: same-day event conflict detection by severity, co-host budget netting, category-level budget exclusions (recruitment, other orgs' events), and a supply calculator with autofill presets per event category. Those came from Greek social planning, and they stay — but they're opt-in by category or tucked behind a collapsed section, so an org that never co-hosts an event simply never sees them.
 
 ## Operating Context
 

@@ -49,6 +49,21 @@ export function pctOfCap(cents, maxBudgetCents) {
   return maxBudgetCents > 0 ? Math.round((cents / maxBudgetCents) * 100) : null;
 }
 
+/**
+ * What's left of the cap once committed spend is accounted for — the number an
+ * officer is actually asking for when they open the Budget page.
+ *
+ * Measured against expected rather than actual spend: money promised to an
+ * event that hasn't happened yet is already gone for planning purposes, and
+ * answering with actual spend would read as headroom the chapter doesn't have.
+ * Goes negative past the cap, which is the point; callers style it.
+ *
+ * Null when no cap is set, since "remaining" means nothing without one.
+ */
+export function remainingUnderCap(expectedSpendCents, maxBudgetCents) {
+  return maxBudgetCents > 0 ? maxBudgetCents - expectedSpendCents : null;
+}
+
 // A category's own excludeFromBudgetTotal flag drives this now — see
 // types/category.ts — rather than a fixed set of category names.
 export function isExcludedFromBudgetTotal(category) {

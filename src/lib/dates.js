@@ -15,6 +15,15 @@ export function addDays(date, days) {
   return new Date(date.getTime() + days * MS_PER_DAY);
 }
 
+/**
+ * Whole days from one ISO date to another, negative when the first is later.
+ * Both sides parse as UTC midnight, so this counts calendar days and never
+ * picks up an off-by-one from a local timezone offset.
+ */
+export function daysBetween(fromISO, toISO) {
+  return Math.round((parseISODate(toISO).getTime() - parseISODate(fromISO).getTime()) / MS_PER_DAY);
+}
+
 export function parseYearMonth(yearMonth) {
   const [year, month] = yearMonth.split("-").map(Number);
   return { year, month };

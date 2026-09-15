@@ -12,6 +12,7 @@ import { MIN_PASSCODE_LENGTH } from "@/lib/auth";
 import { DeleteSemesterButton } from "@/components/DeleteSemesterButton";
 import { ColorField } from "@/components/ColorField";
 import { Masthead } from "@/components/Masthead";
+import { DEFAULT_ORG_NOUN, DEFAULT_PERIOD_NOUN } from "@/lib/vocabulary";
 
 const fieldClass =
   "rounded-sm border border-brand-ink/20 bg-background px-2 py-1.5 text-sm outline-none transition-colors focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15";
@@ -26,23 +27,23 @@ const FALLBACK_SWATCHES = {
   ink: "#1c1c1a",
 };
 
-const ERROR_MESSAGES = {
-  name: "Give the semester a name.",
-  dates: "A semester needs both a start and an end date.",
+const errorMessages = (words) => ({
+  name: `Give the ${words.periodLower} a name.`,
+  dates: `A ${words.periodLower} needs both a start and an end date.`,
   order: "The end date can't be before the start date.",
-  last: "You can't delete your only semester. Create another one first.",
-  chapterName: "Give your chapter a name.",
+  last: `You can't delete your only ${words.periodLower}. Create another one first.`,
+  chapterName: `Give your ${words.orgLower} a name.`,
   color: "Colors need to be six-digit hex codes, like #7b2132.",
   passcodeShort: `Use at least ${MIN_PASSCODE_LENGTH} characters.`,
   passcodeMismatch: "Those two passcodes don't match.",
-};
+});
 
 export default async function SettingsPage({ searchParams }) {
   const params = await searchParams;
-  const errorMessage = ERROR_MESSAGES[params?.error];
   const savedPasscode = params?.saved === "passcode";
   const semesters = await requireSemesters();
-  const { chapterName, colors, appTitle } = await getBrandingSettings();
+  const { chapterName, colors, appTitle, appTitleOverride, words } = await getBrandingSettings();
+  const errorMessage = errorMessages(words)[params?.error];
   const sorted = [...semesters].sort((a, b) => a.startDate.localeCompare(b.startDate));
 
   return (
@@ -60,7 +61,7 @@ export default async function SettingsPage({ searchParams }) {
 
       <section id="chapter" className="flex flex-col gap-3">
         <div>
-          <h2 className="text-[15px] font-semibold text-brand-ink">Chapter</h2>
+          <h2 className="text-[15px] font-semibold text-brand-ink">{words.org}</h2>
           <p className="mt-0.5 text-xs text-brand-ink/75">
             Your name and colors, used across the app and on your calendar export.
             Saved here, so you never have to touch your hosting settings to change them.
@@ -72,7 +73,7 @@ export default async function SettingsPage({ searchParams }) {
           className="flex flex-col gap-4 rounded-md border border-paper-line bg-background p-4 shadow-[var(--shadow-resting)]"
         >
           <label className={`${labelClass} max-w-sm`}>
-            Chapter name
+            {words.org} name
             <input
               name="chapterName"
               defaultValue={chapterName}
@@ -83,6 +84,43 @@ export default async function SettingsPage({ searchParams }) {
               Shows up as &ldquo;{appTitle}&rdquo;.
             </span>
           </label>
+
+          {/* The two words this app used to hardcode. "Chapter" and
+              "Semester" are a fraternity's vocabulary, not everyone's: a
+              non-profit board runs fiscal years and has no chapter at all. */}
+          <div className="flex flex-wrap gap-4">
+            <label className={`${labelClass} w-44`}>
+              What you call yourselves
+              <input
+                name="orgNoun"
+                defaultValue={words.org === DEFAULT_ORG_NOUN ? "" : words.org}
+                placeholder={DEFAULT_ORG_NOUN}
+                className={fieldClass}
+              />
+            </label>
+            <label className={`${labelClass} w-44`}>
+              What you call a term
+              <input
+                name="periodNoun"
+                defaultValue={words.period === DEFAULT_PERIOD_NOUN ? "" : words.period}
+                placeholder={DEFAULT_PERIOD_NOUN}
+                className={fieldClass}
+              />
+            </label>
+            <label className={`${labelClass} w-64`}>
+              Title override
+              <input
+                name="appTitle"
+                defaultValue={appTitleOverride}
+                placeholder={appTitle}
+                className={fieldClass}
+              />
+            </label>
+          </div>
+          <span className="-mt-2 text-xs text-brand-ink/60">
+            Leave any of these blank to use the default. They change wording
+            across the app, not your data.
+          </span>
 
           <div className="flex flex-col gap-2">
             <span className="text-xs font-medium text-brand-ink/75">Colors</span>
@@ -106,17 +144,17 @@ export default async function SettingsPage({ searchParams }) {
             type="submit"
             className="self-start rounded-sm border border-brand-ink/20 px-3 py-1.5 text-sm text-brand-ink transition-colors hover:bg-brand-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
           >
-            Save chapter details
+            Save {words.orgLower} details
           </button>
         </form>
       </section>
 
       <section id="semesters" className="flex flex-col gap-3">
         <div>
-          <h2 className="text-[15px] font-semibold text-brand-ink">Semesters</h2>
+          <h2 className="text-[15px] font-semibold text-brand-ink">{words.periodPlural}</h2>
           <p className="mt-0.5 text-xs text-brand-ink/75">
-            Each semester has its own events, contacts, and budget cap. Add one every
-            term and switch between them from the Calendar and Budget tabs.
+            Each {words.periodLower} has its own events, contacts, and budget cap. Add
+            one every term and switch between them from the Calendar and Budget tabs.
           </p>
         </div>
 
@@ -190,7 +228,7 @@ export default async function SettingsPage({ searchParams }) {
           className="flex flex-wrap items-end gap-3 rounded-md border border-dashed border-brand-ink/20 bg-brand-ink/[0.015] p-3"
         >
           <label className={`${labelClass} min-w-40 flex-1`}>
-            New semester name
+            New {words.periodLower} name
             <input
               name="label"
               placeholder="Spring 2027"
@@ -221,7 +259,7 @@ export default async function SettingsPage({ searchParams }) {
             type="submit"
             className="rounded-sm bg-brand-primary px-3 py-1.5 text-sm font-semibold text-brand-primary-ink transition-all duration-150 hover:brightness-110 active:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
           >
-            Add semester
+            Add {words.periodLower}
           </button>
         </form>
       </section>

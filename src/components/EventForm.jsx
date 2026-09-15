@@ -10,16 +10,8 @@ import {
   pctOfCap,
 } from "@/lib/budget";
 import { DEFAULT_DURATION_MINUTES } from "@/lib/dates";
+import { centsToDollarsInput, dollarsToCents } from "@/lib/money";
 import { DrinkCalculator } from "@/components/DrinkCalculator";
-
-function centsToDollarsInput(cents) {
-  return cents === null ? "" : (cents / 100).toFixed(2);
-}
-
-function dollarsToCents(value) {
-  const parsed = Number.parseFloat(value);
-  return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
-}
 
 let nextLineItemKey = 0;
 
@@ -348,14 +340,14 @@ export function EventForm({
           <div className="tabular-figures -mt-2 px-1 text-xs text-brand-ink/75">
             {maxBudgetCents > 0 ? (
               <>
-                {thisEventPct}% of cap · Semester total: {centsToDisplay(projectedTotalCents)} (
+                {thisEventPct}% of cap · Total: {centsToDisplay(projectedTotalCents)} (
                 {projectedPct}%) ·{" "}
                 <span className={remainingCents < 0 ? "font-medium text-red-600" : ""}>
                   {centsToDisplay(remainingCents)} remaining ({remainingPct}%)
                 </span>
               </>
             ) : (
-              <>Semester total after save: {centsToDisplay(projectedTotalCents)}</>
+              <>Total after save: {centsToDisplay(projectedTotalCents)}</>
             )}
           </div>
         )}

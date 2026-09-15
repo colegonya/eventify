@@ -1,39 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveDrinkGroupsAction } from "@/lib/actions";
+import { useDebouncedAutosave } from "@/components/useDebouncedAutosave";
 
 export function DrinkGroupsEditor({ groups }) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
   const [rows, setRows] = useState(groups);
-  const [saved, setSaved] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
-  const formRef = useRef(null);
-  const saveTimeout = useRef(null);
 
-  const scheduleSave = () => {
-    if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    saveTimeout.current = setTimeout(() => {
-      if (!formRef.current) return;
-      const formData = new FormData(formRef.current);
-      startTransition(async () => {
-        await saveDrinkGroupsAction(formData);
-        setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
-        // The presets grid below renders a row per catalog item — refresh so
-        // it picks up adds/renames/removals without a manual reload.
-        router.refresh();
-      });
-    }, 800);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    };
-  }, []);
+  const { formRef, scheduleSave, statusLabel } = useDebouncedAutosave(
+    saveDrinkGroupsAction,
+    { onSaved: () => router.refresh() },
+  );
 
   const addGroup = () => {
     setRows((rs) => [...rs, { id: crypto.randomUUID(), label: "", items: [] }]);
@@ -189,7 +169,7 @@ export function DrinkGroupsEditor({ groups }) {
             + Add group
           </button>
           <span className="text-sm text-brand-ink/75">
-            {isPending ? "Saving…" : saved ? "Saved" : ""}
+            {statusLabel}
           </span>
         </div>
       </form>

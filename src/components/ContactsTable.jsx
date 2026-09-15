@@ -1,13 +1,30 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState } from "react";
 import { CONTACT_STATUSES } from "@/types/contact";
 import { saveContactsAction } from "@/lib/actions";
 import { ContactStatusPicker } from "@/components/ContactStatusPicker";
+import { pastDueMeetingDays, summarizeContacts } from "@/lib/contacts";
+import { useDebouncedAutosave } from "@/components/useDebouncedAutosave";
 
 let nextRowKey = 0;
 
 const UNGROUPED = "Ungrouped";
+
+// Highlighter Gold at a real fill weight, per the accent's "one thing on the
+// view that most needs a second signal" role. A meeting whose date has come
+// and gone while the contact still reads "Meeting Set" is the one piece of
+// going-quiet the status pill cannot show on its own.
+function PastDueMeetingFlag({ contact, todayISO }) {
+  const days = pastDueMeetingDays(contact, todayISO);
+  if (days === null) return null;
+
+  return (
+    <span className="tabular-figures w-fit rounded-xs bg-brand-accent/35 px-1.5 py-0.5 text-[11px] font-semibold text-brand-accent-deep">
+      Meeting was {days} {days === 1 ? "day" : "days"} ago
+    </span>
+  );
+}
 
 function formatPhoneInput(raw) {
   const digits = raw.replace(/\D/g, "").slice(0, 10);
@@ -19,8 +36,10 @@ function formatPhoneInput(raw) {
 export function ContactsTable({
   semesterId,
   contacts,
+  // Stamped once on the server so the overdue math can't drift between the
+  // server render and the client's own clock.
+  todayISO,
 }) {
-  const [isPending, startTransition] = useTransition();
   const [rows, setRows] = useState(() =>
     contacts.map((c) => ({
       key: `existing-${c.id}`,
@@ -29,28 +48,10 @@ export function ContactsTable({
       status: c.status ?? CONTACT_STATUSES[0],
     })),
   );
-  const [saved, setSaved] = useState(false);
-  const formRef = useRef(null);
-  const saveTimeout = useRef(null);
 
-  const scheduleSave = () => {
-    if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    saveTimeout.current = setTimeout(() => {
-      if (!formRef.current) return;
-      const formData = new FormData(formRef.current);
-      startTransition(async () => {
-        await saveContactsAction(formData);
-        setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
-      });
-    }, 800);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    };
-  }, []);
+  const { formRef, scheduleSave, statusLabel } = useDebouncedAutosave(
+    saveContactsAction,
+  );
 
   const input =
     "w-full rounded-sm border border-brand-ink/20 bg-background px-2 py-1.5 text-sm text-brand-ink outline-none transition-colors placeholder:text-brand-ink/30 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15";
@@ -83,9 +84,8 @@ export function ContactsTable({
     scheduleSave();
   };
 
-  // Contacts are grouped by their own free-text org name — chapters aren't
-  // limited to a fixed list of sororities/orgs, they name their own groups
-  // just by typing one in. Order follows first appearance so cards don't
+  // Contacts are grouped by their own free-text org name — nobody is limited
+  // to a fixed list of orgs, they name their own groups just by typing one in. Order follows first appearance so cards don't
   // jump around while someone is mid-edit. Grouping uses orgGroup (committed
   // on blur) rather than the live org value, otherwise every keystroke moves
   // the row into a new group card and unmounts the input mid-type.
@@ -100,6 +100,15 @@ export function ContactsTable({
     groups.get(org).push(row);
   }
 
+  // Recomputed from live rows, not from the server's copy, so the line tracks
+  // the edit an officer just made instead of the page they loaded.
+  const summary = summarizeContacts(rows, todayISO);
+  const summaryParts = [
+    summary.notReachedOut && `${summary.notReachedOut} not reached out`,
+    summary.awaitingReply && `${summary.awaitingReply} awaiting reply`,
+    summary.meetingPassed && `${summary.meetingPassed} meeting date passed`,
+  ].filter(Boolean);
+
   return (
     <form
       ref={formRef}
@@ -108,6 +117,12 @@ export function ContactsTable({
       className="flex flex-col gap-4"
     >
       <input type="hidden" name="semesterId" value={semesterId} />
+
+      {summaryParts.length > 0 && (
+        <p className="tabular-figures text-sm text-brand-ink/75">
+          {summaryParts.join(" · ")}
+        </p>
+      )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {groupOrder.map((org) => {
@@ -178,7 +193,7 @@ export function ContactsTable({
                           );
                         }}
                         aria-label="Organization"
-                        placeholder="Org, e.g. a sorority or partner org"
+                        placeholder="Org, e.g. a partner club or chapter"
                         className={input}
                       />
 
@@ -209,13 +224,25 @@ export function ContactsTable({
                       />
 
                       <div className="grid grid-cols-2 gap-2 items-start">
-                        <input
-                          type="date"
-                          name="contactMeetingDate"
-                          defaultValue={row.meetingDate ?? ""}
-                          aria-label="Meeting date"
-                          className={input}
-                        />
+                        <div className="flex flex-col gap-1">
+                          <input
+                            type="date"
+                            name="contactMeetingDate"
+                            // Controlled, unlike the other text fields: the
+                            // overdue flag below reads this value, so it has to
+                            // update as soon as the date changes.
+                            value={row.meetingDate ?? ""}
+                            onChange={(e) => {
+                              const meetingDate = e.target.value || null;
+                              setRows((rs) =>
+                                rs.map((r) => (r.key === row.key ? { ...r, meetingDate } : r)),
+                              );
+                            }}
+                            aria-label="Meeting date"
+                            className={input}
+                          />
+                          <PastDueMeetingFlag contact={row} todayISO={todayISO} />
+                        </div>
                         <textarea
                           name="contactNotes"
                           defaultValue={row.notes}
@@ -245,7 +272,7 @@ export function ContactsTable({
           + Add contact
         </button>
         <span className="text-sm text-brand-ink/75">
-          {isPending ? "Saving…" : saved ? "Saved" : ""}
+          {statusLabel}
         </span>
       </div>
     </form>

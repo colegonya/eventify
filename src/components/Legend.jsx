@@ -1,3 +1,10 @@
+import { CONFLICT_STYLES, CONFLICT_LABELS } from "@/lib/constants";
+
+// Fixed red/amber per the Fixed-Severity Rule, so these read the same in every
+// chapter's palette. Without them the calendar's two conflict colors were the
+// one thing on the page with no key at all.
+const CONFLICT_SEVERITIES = ["major", "warning"];
+
 function LegendItems({ categories }) {
   return (
     <>
@@ -17,6 +24,16 @@ function LegendItems({ categories }) {
         />
         Tentative (italic, dashed border)
       </span>
+      {CONFLICT_SEVERITIES.map((severity) => (
+        <span key={severity} className="flex items-center gap-1.5">
+          <span
+            aria-hidden
+            className="h-2.5 w-2.5 shrink-0 rounded-xs"
+            style={{ background: CONFLICT_STYLES[severity].background }}
+          />
+          {CONFLICT_LABELS[severity]}
+        </span>
+      ))}
     </>
   );
 }

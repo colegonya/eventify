@@ -7,23 +7,23 @@ const fieldClass =
   "rounded-sm border border-brand-ink/20 bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15";
 const labelClass = "flex flex-col gap-1.5 text-xs font-medium text-brand-ink/75";
 
-const ERROR_MESSAGES = {
-  chapterName: "Give your chapter a name.",
-  name: "Give the semester a name.",
-  dates: "A semester needs both a start and an end date.",
+const errorMessages = (words) => ({
+  chapterName: `Give your ${words.orgLower} a name.`,
+  name: `Give the ${words.periodLower} a name.`,
+  dates: `A ${words.periodLower} needs both a start and an end date.`,
   order: "The end date can't be before the start date.",
-};
+});
 
 export default async function SetupPage({ searchParams }) {
   const params = await searchParams;
   const semesters = await ensureDefaults();
-  const { chapterName } = await getBrandingSettings();
+  const { chapterName, words } = await getBrandingSettings();
 
   // Already set up — nothing here should be reachable, and re-running it would
   // only invite confusion about which semester is the real one.
   if (semesters.length > 0) redirect("/calendar");
 
-  const errorMessage = ERROR_MESSAGES[params?.error];
+  const errorMessage = errorMessages(words)[params?.error];
 
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col gap-5 p-6">
@@ -31,7 +31,7 @@ export default async function SetupPage({ searchParams }) {
         <Masthead>Set up your calendar</Masthead>
         <p className="mt-2 text-sm text-brand-ink/75">
           Two things to fill in and you&apos;re done. You can change all of it later
-          from the Settings tab, and add more semesters as terms go by.
+          from the Settings tab, and add more {words.periodPluralLower} as they go by.
         </p>
       </div>
 
@@ -46,7 +46,7 @@ export default async function SetupPage({ searchParams }) {
 
       <form action={completeSetupAction} className="flex flex-col gap-4">
         <label className={labelClass}>
-          Chapter name
+          {words.org} name
           <input
             name="chapterName"
             defaultValue={chapterName === "Blank" ? "" : chapterName}
@@ -61,7 +61,7 @@ export default async function SetupPage({ searchParams }) {
         </label>
 
         <label className={labelClass}>
-          Semester name
+          {words.period} name
           <input
             name="label"
             placeholder="Fall 2026"
@@ -82,7 +82,7 @@ export default async function SetupPage({ searchParams }) {
         </div>
 
         <label className={labelClass}>
-          Social budget for the semester ($)
+          Budget for the {words.periodLower} ($)
           <input
             type="number"
             step="0.01"
@@ -105,7 +105,7 @@ export default async function SetupPage({ searchParams }) {
           />
           <span className="text-brand-ink/75">
             <span className="font-medium text-brand-ink">Fill it with example events first.</span>{" "}
-            Made-up events, contacts, and game days spread across the dates above, so
+            Made-up events and contacts spread across the dates above, so
             you can see how the calendar and budget work. Delete them whenever. Leave
             this unchecked to start with an empty calendar.
           </span>
@@ -115,7 +115,7 @@ export default async function SetupPage({ searchParams }) {
           type="submit"
           className="rounded-sm bg-brand-primary px-4 py-2.5 text-sm font-semibold text-brand-primary-ink transition-all duration-150 hover:brightness-110 active:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
         >
-          Create semester
+          Create {words.periodLower}
         </button>
       </form>
     </div>

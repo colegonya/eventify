@@ -1,35 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState } from "react";
 import { saveCategoriesAction } from "@/lib/actions";
+import { useDebouncedAutosave } from "@/components/useDebouncedAutosave";
 
 let nextRowKey = 0;
 
 export function CategoriesEditor({ categories }) {
-  const [isPending, startTransition] = useTransition();
   const [rows, setRows] = useState(() => categories.map((c) => ({ key: `existing-${c.id}`, ...c })));
-  const [saved, setSaved] = useState(false);
-  const formRef = useRef(null);
-  const saveTimeout = useRef(null);
 
-  const scheduleSave = () => {
-    if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    saveTimeout.current = setTimeout(() => {
-      if (!formRef.current) return;
-      const formData = new FormData(formRef.current);
-      startTransition(async () => {
-        await saveCategoriesAction(formData);
-        setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
-      });
-    }, 800);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    };
-  }, []);
+  const { formRef, scheduleSave, statusLabel } = useDebouncedAutosave(
+    saveCategoriesAction,
+  );
 
   const addRow = () =>
     setRows((rs) => [
@@ -108,7 +90,7 @@ export function CategoriesEditor({ categories }) {
             </label>
             <label
               className="flex items-center gap-1.5 text-xs text-brand-ink/75"
-              title="Tracked, but excluded from semester budget totals"
+              title="Tracked, but excluded from budget totals"
             >
               <input
                 type="checkbox"
@@ -152,7 +134,7 @@ export function CategoriesEditor({ categories }) {
           + Add category
         </button>
         <span className="text-sm text-brand-ink/75">
-          {isPending ? "Saving…" : saved ? "Saved" : ""}
+          {statusLabel}
         </span>
       </div>
     </form>

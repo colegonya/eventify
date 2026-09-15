@@ -1,4 +1,4 @@
-import { createHash } from "crypto";
+import { createHash, timingSafeEqual } from "crypto";
 import { kv } from "@/lib/kv";
 
 const PASSCODE = process.env.SITE_PASSCODE;
@@ -24,6 +24,23 @@ export function hashPasscode(passcode) {
   return createHash("sha256").update(passcode).digest("hex");
 }
 
+/**
+ * Constant-time string comparison for the two places a secret is checked.
+ * Plain `===` bails at the first differing character, so how long it takes to
+ * say "no" leaks how much of the value was right. That matters most in the
+ * proxy, where the cookie value *is* the credential: a timing signal there
+ * narrows down a working session cookie directly.
+ *
+ * A length mismatch returns early and leaks only length, which is not a secret
+ * — every valid value here is a 64-character SHA-256 digest.
+ */
+export function secretsMatch(a, b) {
+  const left = Buffer.from(String(a ?? ""), "utf8");
+  const right = Buffer.from(String(b ?? ""), "utf8");
+  if (left.length !== right.length) return false;
+  return timingSafeEqual(left, right);
+}
+
 const ENV_PASSCODE_HASH = hashPasscode(PASSCODE);
 
 /**
@@ -47,7 +64,7 @@ export async function expectedAuthCookieValue() {
 }
 
 export async function isValidPasscode(input) {
-  return hashPasscode(input) === (await currentPasscodeHash());
+  return secretsMatch(hashPasscode(input), await currentPasscodeHash());
 }
 
 export async function setPasscode(passcode) {

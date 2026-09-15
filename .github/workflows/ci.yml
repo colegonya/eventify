@@ -28,7 +28,16 @@ jobs:
 
       - run: npm run lint
 
-      - run: npm test
+      # Coverage, not a bare test run: CLAUDE.md and TESTING.md both set a
+      # coverage goal, and until something measured it, the goal was prose. The
+      # threshold covers src/lib's pure logic — see vitest.config.mjs for why
+      # data.js and actions.js are measured in the browser instead.
+      - run: npm run test:coverage
+
+      # Production dependencies only. Dev-only advisories don't reach a
+      # deployment, and gating on them would make this step noise that gets
+      # ignored, which is worse than not running it.
+      - run: npm audit --omit=dev
 
       - run: npm run build
         env:

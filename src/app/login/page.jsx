@@ -1,6 +1,7 @@
 import { loginAction } from "@/lib/actions";
 import { LoginSubmitButton } from "@/components/LoginSubmitButton";
 import { getBrandingSettings } from "@/lib/data";
+import { LOGIN_WINDOW_SECONDS } from "@/lib/rateLimit";
 
 export default async function LoginPage({
   searchParams,
@@ -30,7 +31,11 @@ export default async function LoginPage({
         />
 
         {params.error && (
-          <p className="mt-2 text-sm text-red-600">Incorrect passcode. Try again.</p>
+          <p className="mt-2 text-sm text-red-600">
+            {params.error === "locked"
+              ? `Too many incorrect attempts. Wait ${Math.round(LOGIN_WINDOW_SECONDS / 60)} minutes and try again.`
+              : "Incorrect passcode. Try again."}
+          </p>
         )}
 
         <LoginSubmitButton />

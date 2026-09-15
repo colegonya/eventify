@@ -1,6 +1,8 @@
 # Eventify
 
-A shared social calendar and budget tracker for any organization's exec board. Built around one chapter's social planning workflow (categories, co-hosted events, a semester budget cap), not a generic calendar app with the labels swapped.
+A shared social calendar and budget tracker for any organization's exec board — a fraternity or sorority chapter, a student government, a club, a non-profit board. Built around a real planning workflow (categories, co-hosted events, a budget cap per term), not a generic calendar app with the labels swapped.
+
+What you call yourselves and what you call a term are yours to set: "Chapter" and "Semester" are defaults, not assumptions baked into the code.
 
 ## Features
 
@@ -10,6 +12,7 @@ A shared social calendar and budget tracker for any organization's exec board. B
 - **Drink & supply calculator**: per-event cost estimates, with an "Autofill" button that pulls from editable presets per category. The whole catalog — drink groups, items, prices — is yours to edit from the Drinks tab.
 - **Contacts**: a per-semester list of other orgs' social chairs and where things stand with each one.
 - **Calendar export**: a one-time `.ics` export of your chapter's own hosted events.
+- **Your vocabulary**: set what the app calls your organization and your terms from Settings, so it reads like your org instead of someone else's.
 - **Passcode-gated access**: one shared passcode for the whole exec board. No per-user accounts to manage, and you can change it from the Settings tab when officers turn over.
 - **Settings you own**: chapter name, colors, semesters, and the passcode are all editable in the app. After the initial deploy you never need to touch your hosting dashboard again.
 

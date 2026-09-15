@@ -3,15 +3,7 @@
 import { useState, useTransition } from "react";
 import { saveEquipmentAction, deleteEquipmentAction } from "@/lib/actions";
 import { centsToDisplay, pctOfCap } from "@/lib/budget";
-
-function centsToDollarsInput(cents) {
-  return cents === null ? "" : (cents / 100).toFixed(2);
-}
-
-function dollarsToCents(value) {
-  const parsed = Number.parseFloat(value);
-  return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
-}
+import { centsToDollarsInput, dollarsToCents } from "@/lib/money";
 
 let nextLineItemKey = 0;
 
@@ -63,7 +55,7 @@ export function EquipmentForm({
       {item && <input type="hidden" name="id" value={item.id} />}
 
       <div className="flex items-center justify-between border-b border-paper-line pb-4">
-        <h2 className="text-xl font-bold tracking-tight text-brand-ink">
+        <h2 id="equipment-editor-title" className="text-xl font-bold tracking-tight text-brand-ink">
           {item ? "Edit Equipment" : "Add Equipment"}
         </h2>
         <button
@@ -134,14 +126,14 @@ export function EquipmentForm({
           <div className="tabular-figures -mt-2 px-1 text-xs text-brand-ink/70">
             {maxBudgetCents > 0 ? (
               <>
-                {thisItemPct}% of cap · Semester total: {centsToDisplay(projectedTotalCents)} (
+                {thisItemPct}% of cap · Total: {centsToDisplay(projectedTotalCents)} (
                 {projectedPct}%) ·{" "}
                 <span className={remainingCents < 0 ? "font-medium text-red-600" : ""}>
                   {centsToDisplay(remainingCents)} remaining ({remainingPct}%)
                 </span>
               </>
             ) : (
-              <>Semester total after save: {centsToDisplay(projectedTotalCents)}</>
+              <>Total after save: {centsToDisplay(projectedTotalCents)}</>
             )}
           </div>
         )}
@@ -164,11 +156,12 @@ export function EquipmentForm({
               <input
                 type="number"
                 step="0.01"
+                min="0"
                 name="actualSpendAmount"
                 placeholder="0.00"
                 aria-label="Line item amount"
                 defaultValue={line.amountCents ? (line.amountCents / 100).toFixed(2) : ""}
-                className={`w-28 ${input}`}
+                className={`tabular-figures w-28 ${input}`}
               />
               <button
                 type="button"
