@@ -340,14 +340,14 @@ export function EventForm({
           <div className="tabular-figures -mt-2 px-1 text-xs text-brand-ink/75">
             {maxBudgetCents > 0 ? (
               <>
-                {thisEventPct}% of cap · Semester total: {centsToDisplay(projectedTotalCents)} (
+                {thisEventPct}% of cap · Total: {centsToDisplay(projectedTotalCents)} (
                 {projectedPct}%) ·{" "}
                 <span className={remainingCents < 0 ? "font-medium text-red-600" : ""}>
                   {centsToDisplay(remainingCents)} remaining ({remainingPct}%)
                 </span>
               </>
             ) : (
-              <>Semester total after save: {centsToDisplay(projectedTotalCents)}</>
+              <>Total after save: {centsToDisplay(projectedTotalCents)}</>
             )}
           </div>
         )}

@@ -395,8 +395,14 @@ export async function saveBrandingAction(formData) {
     colors[key] = value;
   }
 
+  // Blank is meaningful for all three: it means "use the default", which is
+  // how an org clears a word it set by mistake.
+  const orgNoun = String(formData.get("orgNoun") ?? "").trim();
+  const periodNoun = String(formData.get("periodNoun") ?? "").trim();
+  const title = String(formData.get("appTitle") ?? "").trim();
+
   const { chapterName: previousName } = await getBrandingSettings();
-  await saveBrandingSettings({ chapterName, colors });
+  await saveBrandingSettings({ chapterName, colors, orgNoun, periodNoun, appTitle: title });
   await renameChapterInEventHosts(previousName, chapterName);
 
   revalidatePath("/", "layout");

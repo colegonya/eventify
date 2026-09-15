@@ -40,7 +40,7 @@ export default async function CalendarPage({
   if (semesters.length === 0) {
     return (
       <div className="p-6">
-        <p className="text-brand-ink/75">No semesters yet.</p>
+        <p className="text-brand-ink/75">Nothing set up yet.</p>
       </div>
     );
   }
@@ -72,7 +72,7 @@ export default async function CalendarPage({
 
   const [
     { events, gameDays, categories },
-    { chapterName },
+    { chapterName, words },
     showOnboardingChecklist,
     initialEditorData,
   ] = await Promise.all([
@@ -210,7 +210,12 @@ export default async function CalendarPage({
               <span aria-hidden>→</span>
             </Link>
           </div>
-          <SemesterSwitcher semesters={semesters} selectedId={semester.id} />
+          <SemesterSwitcher
+            semesters={semesters}
+            selectedId={semester.id}
+            periodLower={words.periodLower}
+            periodPluralLower={words.periodPluralLower}
+          />
         </div>
 
         <div className="flex items-center gap-2">

@@ -90,7 +90,7 @@ export function CategoriesEditor({ categories }) {
             </label>
             <label
               className="flex items-center gap-1.5 text-xs text-brand-ink/75"
-              title="Tracked, but excluded from semester budget totals"
+              title="Tracked, but excluded from budget totals"
             >
               <input
                 type="checkbox"

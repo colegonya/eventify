@@ -84,9 +84,8 @@ export function ContactsTable({
     scheduleSave();
   };
 
-  // Contacts are grouped by their own free-text org name — chapters aren't
-  // limited to a fixed list of sororities/orgs, they name their own groups
-  // just by typing one in. Order follows first appearance so cards don't
+  // Contacts are grouped by their own free-text org name — nobody is limited
+  // to a fixed list of orgs, they name their own groups just by typing one in. Order follows first appearance so cards don't
   // jump around while someone is mid-edit. Grouping uses orgGroup (committed
   // on blur) rather than the live org value, otherwise every keystroke moves
   // the row into a new group card and unmounts the input mid-type.
@@ -194,7 +193,7 @@ export function ContactsTable({
                           );
                         }}
                         aria-label="Organization"
-                        placeholder="Org, e.g. a sorority or partner org"
+                        placeholder="Org, e.g. a partner club or chapter"
                         className={input}
                       />
 

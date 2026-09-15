@@ -7,6 +7,7 @@ import {
   BRAND_COLOR_VARS,
   appTitle,
 } from "@/lib/config";
+import { vocabulary } from "@/lib/vocabulary";
 import {
   STARTER_SEMESTER,
   STARTER_EVENTS,
@@ -326,7 +327,19 @@ export async function getBrandingSettings() {
   for (const [, key] of BRAND_COLOR_VARS) {
     colors[key] = saved.colors?.[key] || DEFAULT_BRAND_COLORS[key] || "";
   }
-  return { chapterName, appTitle: appTitle(chapterName), colors };
+  // What this deployment calls itself and calls a term. Absent on every
+  // instance that predates the setting, which is why vocabulary() supplies
+  // the fallbacks rather than a migration doing it.
+  const words = vocabulary({ orgNoun: saved.orgNoun, periodNoun: saved.periodNoun });
+  return {
+    chapterName,
+    // A blank override means "derive it", so renaming the org keeps the title
+    // in step instead of stranding a stale one nobody remembers editing.
+    appTitle: saved.appTitle?.trim() || appTitle(chapterName),
+    appTitleOverride: saved.appTitle?.trim() ?? "",
+    colors,
+    words,
+  };
 }
 
 /**
@@ -357,8 +370,8 @@ export async function renameChapterInEventHosts(previousName, chapterName) {
   }
 }
 
-export async function saveBrandingSettings({ chapterName, colors }) {
-  await kv.set(BRANDING_KEY, { chapterName, colors });
+export async function saveBrandingSettings({ chapterName, colors, orgNoun, periodNoun, appTitle: title }) {
+  await kv.set(BRANDING_KEY, { chapterName, colors, orgNoun, periodNoun, appTitle: title });
   invalidateCache(BRANDING_KEY);
 }
 

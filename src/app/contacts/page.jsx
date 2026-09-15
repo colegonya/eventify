@@ -1,4 +1,4 @@
-import { getContacts } from "@/lib/data";
+import { getContacts, getBrandingSettings } from "@/lib/data";
 import { formatISODate } from "@/lib/dates";
 import { requireSemesters } from "@/lib/setup";
 import { SemesterSwitcher } from "@/components/SemesterSwitcher";
@@ -14,14 +14,17 @@ export default async function ContactsPage({
   if (semesters.length === 0) {
     return (
       <div className="p-6">
-        <p className="text-brand-ink/75">No semesters yet.</p>
+        <p className="text-brand-ink/75">Nothing set up yet.</p>
       </div>
     );
   }
 
   const semester =
     semesters.find((s) => s.id === params.semester) ?? semesters[0];
-  const contacts = await getContacts(semester.id);
+  const [contacts, { words }] = await Promise.all([
+    getContacts(semester.id),
+    getBrandingSettings(),
+  ]);
 
   return (
     <div className="flex flex-col gap-6 p-4 md:p-6">
@@ -31,6 +34,8 @@ export default async function ContactsPage({
           semesters={semesters}
           selectedId={semester.id}
           basePath="/contacts"
+          periodLower={words.periodLower}
+          periodPluralLower={words.periodPluralLower}
         />
       </div>
       <ContactsTable

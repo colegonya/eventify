@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getEvents, getEquipmentItems, getCategories } from "@/lib/data";
+import { getEvents, getEquipmentItems, getCategories, getBrandingSettings } from "@/lib/data";
 import { requireSemesters } from "@/lib/setup";
 import {
   computeSemesterBudget,
@@ -30,17 +30,18 @@ export default async function BudgetPage({
   if (semesters.length === 0) {
     return (
       <div className="p-6">
-        <p className="text-brand-ink/75">No semesters yet.</p>
+        <p className="text-brand-ink/75">Nothing set up yet.</p>
       </div>
     );
   }
 
   const semester =
     semesters.find((s) => s.id === params.semester) ?? semesters[0];
-  const [events, allEquipment, categories] = await Promise.all([
+  const [events, allEquipment, categories, { words }] = await Promise.all([
     getEvents(semester.id),
     getEquipmentItems(),
     getCategories(),
+    getBrandingSettings(),
   ]);
   const categoriesById = new Map(categories.map((c) => [c.id, c]));
   const equipment = equipmentItemsForSemester(allEquipment, semester.id);
@@ -160,6 +161,8 @@ export default async function BudgetPage({
             semesters={semesters}
             selectedId={semester.id}
             basePath="/budget"
+            periodLower={words.periodLower}
+            periodPluralLower={words.periodPluralLower}
           />
         </div>
 
@@ -189,7 +192,7 @@ export default async function BudgetPage({
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="rounded-md border border-paper-line bg-background p-5 shadow-[var(--shadow-resting)]">
           <div className="text-xs font-semibold tracking-wide text-brand-ink/60 uppercase">
-            Semester Expected Spend
+            {words.period} Expected Spend
           </div>
           <div className="tabular-figures mt-1 text-3xl font-bold text-brand-ink">
             {centsToDisplay(budget.expectedSpendCents)}
@@ -207,7 +210,7 @@ export default async function BudgetPage({
 
         <div className="rounded-md border border-paper-line bg-background p-5 shadow-[var(--shadow-resting)]">
           <div className="text-xs font-semibold tracking-wide text-brand-ink/60 uppercase">
-            Semester Actual Spend
+            {words.period} Actual Spend
           </div>
           <div className="tabular-figures mt-1 text-3xl font-bold text-brand-ink">
             {centsToDisplay(budget.actualSpendCents)}
@@ -326,7 +329,7 @@ export default async function BudgetPage({
                     {row.capPct !== null && (
                       <span
                         className="ml-1.5 rounded-full bg-brand-ink/[0.06] px-1.5 py-0.5 text-[11px] text-brand-ink/75"
-                        title="Share of the semester max budget"
+                        title={`Share of the ${words.periodLower} max budget`}
                       >
                         {row.capPct}%
                       </span>
@@ -365,7 +368,7 @@ export default async function BudgetPage({
                   {row.capPct !== null && (
                     <span
                       className="tabular-figures rounded-full bg-brand-ink/[0.06] px-1.5 py-0.5 text-[11px] text-brand-ink/75"
-                      title="Share of the semester max budget"
+                      title={`Share of the ${words.periodLower} max budget`}
                     >
                       {row.capPct}% of cap
                     </span>
@@ -433,7 +436,7 @@ export default async function BudgetPage({
                         {row.capPct !== null && (
                           <span
                             className="ml-1.5 rounded-full bg-brand-ink/[0.06] px-1.5 py-0.5 text-[11px] text-brand-ink/60"
-                            title="Share of the semester max budget"
+                            title={`Share of the ${words.periodLower} max budget`}
                           >
                             {row.capPct}%
                           </span>
@@ -481,7 +484,7 @@ export default async function BudgetPage({
                       {row.capPct !== null && (
                         <span
                           className="tabular-figures rounded-full bg-brand-ink/[0.06] px-1.5 py-0.5 text-[11px] text-brand-ink/60"
-                          title="Share of the semester max budget"
+                          title={`Share of the ${words.periodLower} max budget`}
                         >
                           {row.capPct}% of cap
                         </span>

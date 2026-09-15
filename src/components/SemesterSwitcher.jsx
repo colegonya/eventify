@@ -6,16 +6,20 @@ export function SemesterSwitcher({
   semesters,
   selectedId,
   basePath = "/calendar",
+  // What this deployment calls a term; "Semester" is one org's word, not
+  // everyone's. See src/lib/vocabulary.js.
+  periodLower = "semester",
+  periodPluralLower = "semesters",
 }) {
   const router = useRouter();
 
-  // Adding a semester is rare enough not to earn its own button on every page,
+  // Adding a term is rare enough not to earn its own button on every page,
   // but the switcher is where you go looking for one — so it's an option here.
   const MANAGE = "__manage__";
 
   return (
     <select
-      aria-label="Select semester"
+      aria-label={`Select ${periodLower}`}
       value={selectedId ?? ""}
       onChange={(e) =>
         router.push(
@@ -31,7 +35,7 @@ export function SemesterSwitcher({
           {s.label}
         </option>
       ))}
-      <option value={MANAGE}>Add or edit semesters…</option>
+      <option value={MANAGE}>Add or edit {periodPluralLower}…</option>
     </select>
   );
 }

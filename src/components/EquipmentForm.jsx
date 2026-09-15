@@ -126,14 +126,14 @@ export function EquipmentForm({
           <div className="tabular-figures -mt-2 px-1 text-xs text-brand-ink/70">
             {maxBudgetCents > 0 ? (
               <>
-                {thisItemPct}% of cap · Semester total: {centsToDisplay(projectedTotalCents)} (
+                {thisItemPct}% of cap · Total: {centsToDisplay(projectedTotalCents)} (
                 {projectedPct}%) ·{" "}
                 <span className={remainingCents < 0 ? "font-medium text-red-600" : ""}>
                   {centsToDisplay(remainingCents)} remaining ({remainingPct}%)
                 </span>
               </>
             ) : (
-              <>Semester total after save: {centsToDisplay(projectedTotalCents)}</>
+              <>Total after save: {centsToDisplay(projectedTotalCents)}</>
             )}
           </div>
         )}
