@@ -19,7 +19,7 @@ export function DeleteSemesterButton({ label, action, disabled }) {
       }
       onClick={(e) => {
         const ok = window.confirm(
-          `Delete "${label}"? Its events, game days, and contacts are deleted with it. This can't be undone.`,
+          `Delete "${label}"? Its events, markers, and contacts are deleted with it. This can't be undone.`,
         );
         if (!ok) e.preventDefault();
       }}

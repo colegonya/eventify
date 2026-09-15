@@ -12,7 +12,7 @@ export function DayCell({
   date,
   iso,
   events,
-  gameDays,
+  markers,
   categoriesById,
   dimmed,
   isToday,
@@ -78,13 +78,13 @@ export function DayCell({
         </button>
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
-        {gameDays.map((gd) => (
+        {markers.map((marker) => (
           <div
-            key={gd.id}
+            key={marker.id}
             className="truncate rounded-xs border border-dashed border-brand-ink/40 px-1.5 py-0.5 text-[11px] italic text-brand-ink/75"
-            title={`Game day: vs. ${gd.opponent}`}
+            title={marker.label}
           >
-            vs. {gd.opponent}
+            {marker.label}
           </div>
         ))}
         {events.map((event) => (
