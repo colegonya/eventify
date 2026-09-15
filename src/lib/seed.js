@@ -16,9 +16,12 @@ export const STARTER_SEMESTER = {
   maxBudgetCents: 1_000_000,
 };
 
-export const STARTER_GAME_DAYS = [
-  { id: "example-gd-1", semesterId: "example-semester", opponent: "Example University", date: "2026-09-06" },
-  { id: "example-gd-2", semesterId: "example-semester", opponent: "Rival State (Homecoming)", date: "2026-10-11" },
+// Dated notes that aren't events: something to plan around, with no budget and
+// no host. Free text on purpose — a chapter writes "vs. Rival State", a student
+// government writes "Finals week", a board writes "Quarterly review".
+export const STARTER_MARKERS = [
+  { id: "example-marker-1", semesterId: "example-semester", label: "Move-in weekend", date: "2026-09-06" },
+  { id: "example-marker-2", semesterId: "example-semester", label: "Homecoming", date: "2026-10-11" },
 ];
 
 // Every category a chapter sees is data they own (see the Categories tab) —

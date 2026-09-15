@@ -105,9 +105,9 @@ export default async function SetupPage({ searchParams }) {
           />
           <span className="text-brand-ink/75">
             <span className="font-medium text-brand-ink">Fill it with example events first.</span>{" "}
-            Made-up events and contacts spread across the dates above, so
-            you can see how the calendar and budget work. Delete them whenever. Leave
-            this unchecked to start with an empty calendar.
+            Made-up events, contacts, and calendar markers spread across the dates
+            above, so you can see how the calendar and budget work. Delete them
+            whenever. Leave this unchecked to start with an empty calendar.
           </span>
         </label>
 

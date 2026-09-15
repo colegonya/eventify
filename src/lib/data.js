@@ -8,10 +8,11 @@ import {
   appTitle,
 } from "@/lib/config";
 import { vocabulary } from "@/lib/vocabulary";
+import { normalizeMarkers } from "@/lib/markers";
 import {
   STARTER_SEMESTER,
   STARTER_EVENTS,
-  STARTER_GAME_DAYS,
+  STARTER_MARKERS,
   STARTER_CONTACTS,
   STARTER_CATEGORIES,
   DEFAULT_DRINK_GROUPS,
@@ -102,7 +103,7 @@ export async function saveSemester(semester) {
 // write lands, each compute a valid-looking 1-item remainder, and both
 // proceed — verified live while building this fix (a JS-level fresh-read
 // re-check narrowed the window but did not close it; two backgrounded curl
-// requests reproduced both semesters' events/gameDays/contacts being wiped
+// requests reproduced both semesters' events/markers/contacts being wiped
 // while the semester list itself still showed one "surviving" entry with no
 // data underneath). A single EVAL runs atomically against Redis — no other
 // command can interleave with it — so it's the only way to make the guard
@@ -177,17 +178,15 @@ export async function deleteEvent(
   );
 }
 
-export async function getGameDays(
-  semesterId,
-) {
-  return (await kv.get(gameDaysKey(semesterId))) ?? [];
+// The Redis key still says gamedays. It holds the same records under a more
+// honest name, and renaming the key would mean migrating live data for nothing
+// a user can see — the same call made for "semester" in the other keys.
+export async function getMarkers(semesterId) {
+  return normalizeMarkers(await kv.get(gameDaysKey(semesterId)));
 }
 
-export async function saveGameDays(
-  semesterId,
-  gameDays,
-) {
-  await kv.set(gameDaysKey(semesterId), gameDays);
+export async function saveMarkers(semesterId, markers) {
+  await kv.set(gameDaysKey(semesterId), markers);
 }
 
 export async function getContacts(semesterId) {
@@ -274,11 +273,13 @@ export async function getCalendarGridData(semesterId) {
   pipeline.get(gameDaysKey(semesterId));
   pipeline.get(CATEGORIES_KEY);
 
-  const [events, gameDays, categories] = await pipeline.exec();
+  const [events, markers, categories] = await pipeline.exec();
 
   return {
     events: events ?? [],
-    gameDays: gameDays ?? [],
+    // Normalized here rather than at the render site so a pre-existing record
+    // written as {opponent} reaches the calendar already looking current.
+    markers: normalizeMarkers(markers),
     categories: categories ?? [],
   };
 }
@@ -517,10 +518,10 @@ export async function seedExampleData(semester) {
     startDate: shift(e.startDate),
     endDate: shift(e.endDate),
   }));
-  const gameDays = STARTER_GAME_DAYS.map((g) => ({
-    ...g,
+  const markers = STARTER_MARKERS.map((m) => ({
+    ...m,
     semesterId: semester.id,
-    date: shift(g.date),
+    date: shift(m.date),
   }));
   const contacts = STARTER_CONTACTS.map((c) => ({
     ...c,
@@ -530,7 +531,7 @@ export async function seedExampleData(semester) {
 
   await Promise.all([
     kv.set(eventsKey(semester.id), events),
-    kv.set(gameDaysKey(semester.id), gameDays),
+    kv.set(gameDaysKey(semester.id), markers),
     kv.set(contactsKey(semester.id), contacts),
   ]);
 }

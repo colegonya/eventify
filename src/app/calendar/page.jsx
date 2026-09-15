@@ -23,6 +23,7 @@ import { Legend, LegendDropdown } from "@/components/Legend";
 import { Masthead } from "@/components/Masthead";
 import { DayCell } from "@/components/DayCell";
 import { ScrollTodayIntoView } from "@/components/ScrollTodayIntoView";
+import { MarkersDialog } from "@/components/MarkersDialog";
 import { EditorProvider } from "@/components/EditorProvider";
 
 const CALENDAR_GRID_ID = "calendar-grid";
@@ -71,7 +72,7 @@ export default async function CalendarPage({
   const mightOpenEditorOnLoad = Boolean(params.event) || params.new !== undefined;
 
   const [
-    { events, gameDays, categories },
+    { events, markers, categories },
     { chapterName, words },
     showOnboardingChecklist,
     initialEditorData,
@@ -102,11 +103,11 @@ export default async function CalendarPage({
       return a.startTime.localeCompare(b.startTime);
     });
   }
-  const gameDaysByDate = new Map();
-  for (const gameDay of gameDays) {
-    const list = gameDaysByDate.get(gameDay.date) ?? [];
-    list.push(gameDay);
-    gameDaysByDate.set(gameDay.date, list);
+  const markersByDate = new Map();
+  for (const marker of markers) {
+    const list = markersByDate.get(marker.date) ?? [];
+    list.push(marker);
+    markersByDate.set(marker.date, list);
   }
 
   const view = params.view === "week" ? "week" : "month";
@@ -244,6 +245,7 @@ export default async function CalendarPage({
             </svg>
             <span className="hidden sm:inline">Export .ics</span>
           </a>
+          <MarkersDialog semesterId={semester.id} markers={markers} />
           <AddEventButton date={addDate} />
           <LegendDropdown categories={categories} />
         </div>
@@ -281,7 +283,7 @@ export default async function CalendarPage({
               date={date}
               iso={iso}
               events={eventsByDate.get(iso) ?? []}
-              gameDays={gameDaysByDate.get(iso) ?? []}
+              markers={markersByDate.get(iso) ?? []}
               categoriesById={categoriesById}
               dimmed={view === "month" && !isSameMonth(date, month)}
               isToday={isToday(date, today)}

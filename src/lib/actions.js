@@ -17,6 +17,7 @@ import {
   deleteSemester as deleteSemesterRecord,
   seedExampleData,
   saveContacts,
+  saveMarkers,
   saveDrinkPresets,
   getDrinkGroups,
   saveDrinkGroups,
@@ -44,6 +45,7 @@ import {
   clearFailedLogins,
 } from "@/lib/rateLimit";
 import { parseDollarsToCents } from "@/lib/money";
+import { parseMarkers } from "@/lib/markers";
 import { semesterIdFromLabel, parseSemesterFields } from "@/lib/semesters";
 import { BRAND_COLOR_VARS } from "@/lib/config";
 import { computeCategorySpendStats, computeEquipmentContribution } from "@/lib/budget";
@@ -374,6 +376,17 @@ export async function saveEquipmentAction(formData) {
 
   await saveEquipmentItem(item);
   revalidatePath("/budget");
+}
+
+/**
+ * Replaces the whole marker list for a semester, the same way the contacts and
+ * categories tables save: the editor owns every row on screen, so a removed
+ * row is simply one that isn't in the submission.
+ */
+export async function saveMarkersAction(formData) {
+  const semesterId = String(formData.get("semesterId"));
+  await saveMarkers(semesterId, parseMarkers(formData, semesterId));
+  revalidatePath("/calendar");
 }
 
 export async function deleteEquipmentAction(id) {
