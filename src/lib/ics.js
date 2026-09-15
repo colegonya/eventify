@@ -13,6 +13,9 @@ function escapeText(text) {
     .replace(/\n/g, "\\n");
 }
 
+const isHighSurrogate = (code) => code >= 0xd800 && code <= 0xdbff;
+const isLowSurrogate = (code) => code >= 0xdc00 && code <= 0xdfff;
+
 // RFC 5545 line folding: no line may exceed 75 octets; continuations start with a space.
 function foldLine(line) {
   const bytes = Buffer.byteLength(line, "utf8");
@@ -24,6 +27,14 @@ function foldLine(line) {
   while (Buffer.byteLength(rest, "utf8") > limit) {
     let end = limit;
     while (Buffer.byteLength(rest.slice(0, end), "utf8") > limit) end--;
+    // The search above counts bytes but cuts by UTF-16 code unit, and a lone
+    // surrogate measures 3 bytes where the whole pair measures 4 — so the
+    // limit can be satisfied by a cut straight through an astral character.
+    // Both halves then encode as U+FFFD and an emoji in an event name is
+    // destroyed in the export. Step back one unit to keep the pair together.
+    if (end > 1 && isHighSurrogate(rest.charCodeAt(end - 1)) && isLowSurrogate(rest.charCodeAt(end))) {
+      end--;
+    }
     folded.push(rest.slice(0, end));
     rest = rest.slice(end);
     limit = 74; // continuation lines lose one octet to the leading space
