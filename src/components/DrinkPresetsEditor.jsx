@@ -1,36 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState } from "react";
 import { saveDrinkPresetsAction } from "@/lib/actions";
+import { useDebouncedAutosave } from "@/components/useDebouncedAutosave";
 
 export function DrinkPresetsEditor({
   presets,
   groups,
   categories,
 }) {
-  const [isPending, startTransition] = useTransition();
-  const [saved, setSaved] = useState(false);
-  const formRef = useRef(null);
-  const saveTimeout = useRef(null);
 
-  const scheduleSave = () => {
-    if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    saveTimeout.current = setTimeout(() => {
-      if (!formRef.current) return;
-      const formData = new FormData(formRef.current);
-      startTransition(async () => {
-        await saveDrinkPresetsAction(formData);
-        setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
-      });
-    }, 800);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    };
-  }, []);
+  const { formRef, scheduleSave, statusLabel } = useDebouncedAutosave(
+    saveDrinkPresetsAction,
+  );
 
   // Categories that had no typical order when the page loaded: collapsed, and
   // sorted to the bottom. Frozen at mount rather than re-derived from
@@ -130,7 +112,7 @@ export function DrinkPresetsEditor({
 
       <div className="flex items-center justify-end gap-3">
         <span className="text-sm text-brand-ink/75">
-          {isPending ? "Saving…" : saved ? "Saved" : ""}
+          {statusLabel}
         </span>
       </div>
     </form>

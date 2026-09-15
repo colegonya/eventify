@@ -10,16 +10,8 @@ import {
   pctOfCap,
 } from "@/lib/budget";
 import { DEFAULT_DURATION_MINUTES } from "@/lib/dates";
+import { centsToDollarsInput, dollarsToCents } from "@/lib/money";
 import { DrinkCalculator } from "@/components/DrinkCalculator";
-
-function centsToDollarsInput(cents) {
-  return cents === null ? "" : (cents / 100).toFixed(2);
-}
-
-function dollarsToCents(value) {
-  const parsed = Number.parseFloat(value);
-  return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
-}
 
 let nextLineItemKey = 0;
 

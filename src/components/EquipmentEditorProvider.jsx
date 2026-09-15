@@ -4,12 +4,12 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
 } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { computeEquipmentContribution } from "@/lib/budget";
+import { useModalDialog } from "@/components/useModalDialog";
 
 function EquipmentFormSkeleton() {
   return (
@@ -79,15 +79,7 @@ export function EquipmentEditorProvider({
   const editingItem = itemId ? items.find((i) => i.id === itemId) ?? null : null;
   const open = itemId ? editingItem !== null : isNew;
 
-  // Close on Escape while the editor is open.
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e) => {
-      if (e.key === "Escape") close();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, close]);
+  const dialogRef = useModalDialog(open, close);
 
   // otherSpendExpectedCents already excludes all equipment; add back every
   // other item's expected cost, excluding the one being edited.
@@ -112,7 +104,14 @@ export function EquipmentEditorProvider({
             if (e.target === e.currentTarget) close();
           }}
         >
-          <div className="animate-panel-in mx-auto my-8 w-full max-w-2xl">
+          <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="equipment-editor-title"
+            tabIndex={-1}
+            className="animate-panel-in mx-auto my-8 w-full max-w-2xl outline-none"
+          >
             <EquipmentForm
               key={itemId ?? "new"}
               semesterId={semesterId}

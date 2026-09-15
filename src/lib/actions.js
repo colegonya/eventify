@@ -43,6 +43,7 @@ import {
   registerFailedLogin,
   clearFailedLogins,
 } from "@/lib/rateLimit";
+import { parseDollarsToCents } from "@/lib/money";
 import { BRAND_COLOR_VARS } from "@/lib/config";
 import { computeCategorySpendStats, computeEquipmentContribution } from "@/lib/budget";
 import { equipmentItemsForSemester } from "@/lib/equipment";
@@ -99,13 +100,6 @@ export async function updatePasscodeAction(formData) {
   cookieStore.set(AUTH_COOKIE_NAME, value, AUTH_COOKIE_OPTIONS);
 
   redirect("/settings?saved=passcode");
-}
-
-function parseDollarsToCents(value) {
-  if (typeof value !== "string" || value.trim() === "") return null;
-  const dollars = Number.parseFloat(value);
-  if (Number.isNaN(dollars)) return null;
-  return Math.round(dollars * 100);
 }
 
 function parseActualSpend(formData) {

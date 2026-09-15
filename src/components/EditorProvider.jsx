@@ -15,6 +15,7 @@ import { useSearchParams } from "next/navigation";
 import { computeSemesterBudget } from "@/lib/budget";
 import { buildCalendarHref } from "@/lib/calendarUrl";
 import { getEditorSupportingDataAction } from "@/lib/actions";
+import { useModalDialog } from "@/components/useModalDialog";
 
 function EventFormSkeleton() {
   return (
@@ -113,59 +114,7 @@ export function EditorProvider({
     : null;
   const open = eventId ? editingEvent !== null : isNew;
 
-  // Close on Escape while the editor is open.
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e) => {
-      if (e.key === "Escape") close();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, close]);
-
-  // Focus management while the dialog is open: pull focus into it on open,
-  // keep Tab cycling inside it, and restore focus to the trigger on close.
-  const dialogRef = useRef(null);
-  useEffect(() => {
-    if (!open) return;
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    const previouslyFocused = document.activeElement;
-
-    const focusables = () =>
-      Array.from(
-        dialog.querySelectorAll(
-          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-        ),
-      ).filter((el) => el.offsetParent !== null);
-
-    (focusables()[0] ?? dialog).focus();
-
-    const onKeyDown = (e) => {
-      if (e.key !== "Tab") return;
-      const items = focusables();
-      if (items.length === 0) {
-        e.preventDefault();
-        return;
-      }
-      const first = items[0];
-      const last = items[items.length - 1];
-      const active = document.activeElement;
-      if (e.shiftKey && (active === first || !dialog.contains(active))) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && (active === last || !dialog.contains(active))) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-
-    dialog.addEventListener("keydown", onKeyDown);
-    return () => {
-      dialog.removeEventListener("keydown", onKeyDown);
-      previouslyFocused?.focus?.();
-    };
-  }, [open]);
+  const dialogRef = useModalDialog(open, close);
 
   // Drink presets/groups, categorySpendStats, and equipmentExpectedCents —
   // only consumed inside the dialog below — are fetched on demand when it

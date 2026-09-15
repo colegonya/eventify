@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState } from "react";
 import { CONTACT_STATUSES } from "@/types/contact";
 import { saveContactsAction } from "@/lib/actions";
 import { ContactStatusPicker } from "@/components/ContactStatusPicker";
 import { pastDueMeetingDays, summarizeContacts } from "@/lib/contacts";
+import { useDebouncedAutosave } from "@/components/useDebouncedAutosave";
 
 let nextRowKey = 0;
 
@@ -39,7 +40,6 @@ export function ContactsTable({
   // server render and the client's own clock.
   todayISO,
 }) {
-  const [isPending, startTransition] = useTransition();
   const [rows, setRows] = useState(() =>
     contacts.map((c) => ({
       key: `existing-${c.id}`,
@@ -48,28 +48,10 @@ export function ContactsTable({
       status: c.status ?? CONTACT_STATUSES[0],
     })),
   );
-  const [saved, setSaved] = useState(false);
-  const formRef = useRef(null);
-  const saveTimeout = useRef(null);
 
-  const scheduleSave = () => {
-    if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    saveTimeout.current = setTimeout(() => {
-      if (!formRef.current) return;
-      const formData = new FormData(formRef.current);
-      startTransition(async () => {
-        await saveContactsAction(formData);
-        setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
-      });
-    }, 800);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    };
-  }, []);
+  const { formRef, scheduleSave, statusLabel } = useDebouncedAutosave(
+    saveContactsAction,
+  );
 
   const input =
     "w-full rounded-sm border border-brand-ink/20 bg-background px-2 py-1.5 text-sm text-brand-ink outline-none transition-colors placeholder:text-brand-ink/30 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15";
@@ -291,7 +273,7 @@ export function ContactsTable({
           + Add contact
         </button>
         <span className="text-sm text-brand-ink/75">
-          {isPending ? "Saving…" : saved ? "Saved" : ""}
+          {statusLabel}
         </span>
       </div>
     </form>
