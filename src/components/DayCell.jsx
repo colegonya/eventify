@@ -26,6 +26,8 @@ export function DayCell({
 
   return (
     <div
+      // Marks the column ScrollTodayIntoView centers on a narrow screen.
+      data-today={isToday ? "" : undefined}
       onDragOver={(e) => {
         // Only a dragged event pill carries our MIME type; ignore everything else.
         if (!e.dataTransfer.types.includes(DRAG_MIME)) return;

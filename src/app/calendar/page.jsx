@@ -22,7 +22,10 @@ import { SemesterSwitcher } from "@/components/SemesterSwitcher";
 import { Legend, LegendDropdown } from "@/components/Legend";
 import { Masthead } from "@/components/Masthead";
 import { DayCell } from "@/components/DayCell";
+import { ScrollTodayIntoView } from "@/components/ScrollTodayIntoView";
 import { EditorProvider } from "@/components/EditorProvider";
+
+const CALENDAR_GRID_ID = "calendar-grid";
 import { AddEventButton } from "@/components/AddEventButton";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 
@@ -245,7 +248,10 @@ export default async function CalendarPage({
 
       <Legend categories={categories} />
 
+      <ScrollTodayIntoView containerId={CALENDAR_GRID_ID} />
+
       <div
+        id={CALENDAR_GRID_ID}
         className={`grid min-h-0 flex-1 gap-px border border-paper-line bg-paper-line text-xs ${
           view === "week"
             ? "grid-cols-[repeat(7,minmax(220px,1fr))] overflow-x-auto overflow-y-hidden md:grid-cols-7"
