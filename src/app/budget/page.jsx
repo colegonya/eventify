@@ -6,6 +6,7 @@ import {
   computeAlerts,
   centsToDisplay,
   pctOfCap,
+  remainingUnderCap,
   alertMessage,
   isExpectedSpendPending,
   capSharePct,
@@ -49,6 +50,8 @@ export default async function BudgetPage({
 
   const expectedPct = pctOfCap(budget.expectedSpendCents, semester.maxBudgetCents) ?? 0;
   const actualPct = pctOfCap(budget.actualSpendCents, semester.maxBudgetCents) ?? 0;
+  const remainingCents = remainingUnderCap(budget.expectedSpendCents, semester.maxBudgetCents);
+  const remainingPct = Math.max(0, 100 - expectedPct);
 
   const sortedEvents = events
     .filter(
@@ -183,7 +186,7 @@ export default async function BudgetPage({
         </form>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="rounded-md border border-paper-line bg-background p-5 shadow-[var(--shadow-resting)]">
           <div className="text-xs font-semibold tracking-wide text-brand-ink/60 uppercase">
             Semester Expected Spend
@@ -219,6 +222,35 @@ export default async function BudgetPage({
             />
           </div>
         </div>
+
+        {/* The question an officer actually opens this page to answer. The
+            figure existed already, but only inside the event editor, so
+            reading it off the Budget page meant doing the subtraction. */}
+        {remainingCents !== null && (
+          <div className="rounded-md border border-paper-line bg-background p-5 shadow-[var(--shadow-resting)]">
+            <div className="text-xs font-semibold tracking-wide text-brand-ink/60 uppercase">
+              {remainingCents < 0 ? "Over Cap" : "Left to Spend"}
+            </div>
+            <div
+              className={`tabular-figures mt-1 text-3xl font-bold ${
+                remainingCents < 0 ? "text-red-600" : "text-brand-ink"
+              }`}
+            >
+              {centsToDisplay(Math.abs(remainingCents))}
+            </div>
+            <div className="tabular-figures mt-1 text-xs text-brand-ink/75">
+              {remainingCents < 0
+                ? `${expectedPct - 100}% past the cap`
+                : `${remainingPct}% of the cap still open`}
+            </div>
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-paper-line">
+              <div
+                className={`h-full ${remainingCents < 0 ? "bg-red-600" : "bg-brand-primary"}`}
+                style={{ width: `${remainingCents < 0 ? 100 : remainingPct}%` }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       <BudgetCategoryPieChart slices={pieSlicesWithPct} totalCents={pieTotalCents} />

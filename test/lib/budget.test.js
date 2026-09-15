@@ -5,6 +5,7 @@ import {
   needsBudgetApproval,
   isExpectedSpendPending,
   capSharePct,
+  remainingUnderCap,
 } from "@/lib/budget";
 
 const categories = [
@@ -130,5 +131,25 @@ describe("capSharePct", () => {
   it("reports the share for a budgeted category, negative contributions included", () => {
     expect(capSharePct(90000, maxBudgetCents, categoriesById.get("mixer"))).toBe(10);
     expect(capSharePct(-90000, maxBudgetCents, categoriesById.get("philanthropy"))).toBe(-10);
+  });
+});
+
+describe("remainingUnderCap", () => {
+  it("reports what's left of the cap", () => {
+    expect(remainingUnderCap(300000, 1000000)).toBe(700000);
+  });
+
+  it("goes negative once committed spend passes the cap", () => {
+    // The Budget page styles this red and relabels the tile; it must not
+    // clamp at zero, or going over would look identical to landing exactly on.
+    expect(remainingUnderCap(1200000, 1000000)).toBe(-200000);
+  });
+
+  it("reports nothing left at exactly the cap", () => {
+    expect(remainingUnderCap(1000000, 1000000)).toBe(0);
+  });
+
+  it("returns null when no cap is set, since remaining means nothing then", () => {
+    expect(remainingUnderCap(300000, 0)).toBeNull();
   });
 });
