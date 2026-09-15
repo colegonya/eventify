@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import {
   saveEvent,
   deleteEvent as deleteEventRecord,
@@ -37,6 +37,12 @@ import {
   setPasscode,
   MIN_PASSCODE_LENGTH,
 } from "@/lib/auth";
+import {
+  clientIdFromForwardedFor,
+  isLoginLockedOut,
+  registerFailedLogin,
+  clearFailedLogins,
+} from "@/lib/rateLimit";
 import { BRAND_COLOR_VARS } from "@/lib/config";
 import { computeCategorySpendStats, computeEquipmentContribution } from "@/lib/budget";
 import { equipmentItemsForSemester } from "@/lib/equipment";
@@ -52,10 +58,22 @@ const AUTH_COOKIE_OPTIONS = {
 export async function loginAction(formData) {
   const passcode = String(formData.get("passcode") ?? "");
   const next = String(formData.get("next") ?? "/calendar");
+  const backToLogin = (error) => `/login?next=${encodeURIComponent(next)}&error=${error}`;
+
+  // The passcode is shared and short by design, so the only thing standing
+  // between a public URL and the chapter's data is how many guesses a stranger
+  // gets. Check the limit before spending a Redis read on the passcode itself.
+  const clientId = clientIdFromForwardedFor((await headers()).get("x-forwarded-for"));
+  if (await isLoginLockedOut(clientId)) {
+    redirect(backToLogin("locked"));
+  }
 
   if (!(await isValidPasscode(passcode))) {
-    redirect(`/login?next=${encodeURIComponent(next)}&error=1`);
+    await registerFailedLogin(clientId);
+    redirect(backToLogin("1"));
   }
+
+  await clearFailedLogins(clientId);
 
   const cookieStore = await cookies();
   cookieStore.set(AUTH_COOKIE_NAME, await expectedAuthCookieValue(), AUTH_COOKIE_OPTIONS);
