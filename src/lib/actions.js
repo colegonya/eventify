@@ -48,6 +48,7 @@ import { parseDollarsToCents } from "@/lib/money";
 import { parseMarkers } from "@/lib/markers";
 import { semesterIdFromLabel, parseSemesterFields } from "@/lib/semesters";
 import { BRAND_COLOR_VARS } from "@/lib/config";
+import { isHexColor } from "@/lib/color";
 import { computeCategorySpendStats, computeEquipmentContribution } from "@/lib/budget";
 import { equipmentItemsForSemester } from "@/lib/equipment";
 
@@ -404,7 +405,7 @@ export async function saveBrandingAction(formData) {
   const colors = {};
   for (const [, key] of BRAND_COLOR_VARS) {
     const value = String(formData.get(`color-${key}`) ?? "").trim();
-    if (value && !HEX_COLOR.test(value)) redirect("/settings?error=color");
+    if (value && !isHexColor(value)) redirect("/settings?error=color");
     colors[key] = value;
   }
 

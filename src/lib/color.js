@@ -10,3 +10,9 @@ export function contrastTextColor(hex) {
   const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
   return luminance > 0.6 ? "#1e293b" : "#ffffff";
 }
+
+// Brand colors from Settings land in a <style> tag, so only a strict six-digit
+// hex code is allowed through.
+export function isHexColor(value) {
+  return /^#[0-9a-fA-F]{6}$/.test(value);
+}
