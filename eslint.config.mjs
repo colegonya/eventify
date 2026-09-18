@@ -3,6 +3,10 @@ import nextVitals from "eslint-config-next/core-web-vitals";
 
 const eslintConfig = defineConfig([
   ...nextVitals,
+  // The Next preset leaves this off. Without it, a name deleted in a refactor
+  // but still used in a "use server" file (which Vitest cannot import) ships
+  // as a runtime ReferenceError, as HEX_COLOR did on the Settings page.
+  { rules: { "no-undef": "error" } },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
