@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { AUTH_COOKIE_NAME, expectedAuthCookieValue, secretsMatch } from "@/lib/auth";
+import { AUTH_COOKIE_NAME, verifySessionToken } from "@/lib/auth";
 
 /**
  * Whether the current request carries a valid login cookie. Same comparison
@@ -8,7 +8,7 @@ import { AUTH_COOKIE_NAME, expectedAuthCookieValue, secretsMatch } from "@/lib/a
  */
 export async function hasValidSession() {
   const cookie = (await cookies()).get(AUTH_COOKIE_NAME);
-  return secretsMatch(cookie?.value, await expectedAuthCookieValue());
+  return (await verifySessionToken(cookie?.value)).valid;
 }
 
 /**

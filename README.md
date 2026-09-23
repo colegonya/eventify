@@ -54,7 +54,7 @@ The last two rows are defaults, not settings. Anything you save in the app wins 
 All of this is done in the running app. No code edits, no redeploys.
 
 - **Name and colors**: the Settings tab. Pick colors with a swatch picker or paste hex codes; leave a color blank for the default.
-- **Passcode**: the Settings tab. Changing it signs out every other browser, which is what you want when officers turn over. You stay signed in.
+- **Passcode**: the Settings tab. Changing it signs out every other browser, which is what you want when officers turn over. You stay signed in. Otherwise a login lasts 30 days from the last time that browser used the app, and **Sign out** in the tab bar ends it on a shared computer.
 - **Semesters**: the Settings tab, or "Add or edit semesters…" in the semester dropdown on the Calendar and Budget tabs. Add one each term, rename them, move their dates, or delete one (which deletes its events, game days, and contacts too).
 - **Event categories**: the Categories tab. Add, rename, recolor, or delete them as you like. Each category can also be marked as netting revenue (cost offset by income, like a philanthropy event), excluded from the budget total (Recruitment, say), or flagged as another org's event (kept out of your budget and calendar export).
 - **Drinks & supply catalog**: the Drinks tab — drink groups and items with prices, plus each category's typical autofill quantities.
