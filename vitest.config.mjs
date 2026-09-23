@@ -26,6 +26,7 @@ export default defineConfig({
         // into money.js and semesters.js, which are measured below.
         "src/lib/data.js",
         "src/lib/actions.js",
+        "src/lib/loginAction.js",
         // Constants, env-var defaults, and a three-line redirect wrapper:
         // nothing here has a branch to get wrong.
         "src/lib/kv.js",
