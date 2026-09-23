@@ -1,0 +1,19 @@
+# A local stand-in for Upstash, used by the end-to-end tests (see TESTING.md).
+# serverless-redis-http speaks the same HTTP protocol as Upstash's REST API,
+# in front of a plain Redis, so the app's real client runs unchanged. Nothing
+# here is used in production.
+#
+#   docker compose up -d     then     npm run test:e2e
+services:
+  redis:
+    image: redis:7-alpine
+  srh:
+    image: hiett/serverless-redis-http:0.0.10
+    ports:
+      - "8079:80"
+    environment:
+      SRH_MODE: env
+      SRH_TOKEN: e2e-token
+      SRH_CONNECTION_STRING: redis://redis:6379
+    depends_on:
+      - redis

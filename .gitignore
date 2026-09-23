@@ -46,3 +46,8 @@ HANDOFF.md
 
 .vercel
 .env*
+
+# playwright
+/playwright-report/
+/test-results/
+/e2e/.auth/

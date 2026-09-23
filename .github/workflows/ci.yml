@@ -46,3 +46,42 @@ jobs:
           SITE_PASSCODE: ci-placeholder
           UPSTASH_REDIS_REST_URL: https://placeholder.upstash.io
           UPSTASH_REDIS_REST_TOKEN: ci-placeholder-token
+
+  # End-to-end smoke tests against a production build, with serverless-redis-http
+  # standing in for Upstash. Runs alongside `check`, not after it, so it adds no
+  # time to the fast feedback. See TESTING.md.
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+      srh:
+        image: hiett/serverless-redis-http:0.0.10
+        ports:
+          - 8079:80
+        env:
+          SRH_MODE: env
+          SRH_TOKEN: e2e-token
+          SRH_CONNECTION_STRING: redis://redis:6379
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps chromium
+
+      # playwright.config.mjs builds and starts the app itself, with the test
+      # passcode and the local Redis above. No real credentials are involved.
+      - run: npm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
