@@ -1,13 +1,14 @@
-import { loginAction } from "@/lib/actions";
+import { loginAction } from "@/lib/loginAction";
 import { LoginSubmitButton } from "@/components/LoginSubmitButton";
 import { getBrandingSettings } from "@/lib/data";
 import { LOGIN_WINDOW_SECONDS } from "@/lib/rateLimit";
+import { safeNextPath } from "@/lib/redirects";
 
 export default async function LoginPage({
   searchParams,
 }) {
   const params = await searchParams;
-  const next = params.next ?? "/calendar";
+  const next = safeNextPath(params.next);
   const { appTitle } = await getBrandingSettings();
 
   return (

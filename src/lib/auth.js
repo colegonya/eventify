@@ -15,6 +15,14 @@ if (!PASSCODE) {
 }
 
 export const AUTH_COOKIE_NAME = "social_calendar_access";
+
+export const AUTH_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  path: "/",
+  maxAge: 60 * 60 * 24 * 180,
+};
 const PASSCODE_KEY = "authPasscodeHash";
 
 /** Short enough to share in a group chat, long enough not to be guessed. */

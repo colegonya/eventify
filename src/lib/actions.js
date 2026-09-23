@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import {
   saveEvent,
   deleteEvent as deleteEventRecord,
@@ -33,17 +33,11 @@ import {
 import { parseISODate, formatISODate, addDays } from "@/lib/dates";
 import {
   AUTH_COOKIE_NAME,
-  expectedAuthCookieValue,
-  isValidPasscode,
+  AUTH_COOKIE_OPTIONS,
   setPasscode,
   MIN_PASSCODE_LENGTH,
 } from "@/lib/auth";
-import {
-  clientIdFromForwardedFor,
-  isLoginLockedOut,
-  registerFailedLogin,
-  clearFailedLogins,
-} from "@/lib/rateLimit";
+import { requireSession } from "@/lib/session";
 import { parseDollarsToCents } from "@/lib/money";
 import { parseMarkers } from "@/lib/markers";
 import { semesterIdFromLabel, parseSemesterFields } from "@/lib/semesters";
@@ -52,40 +46,6 @@ import { isHexColor } from "@/lib/color";
 import { computeCategorySpendStats, computeEquipmentContribution } from "@/lib/budget";
 import { equipmentItemsForSemester } from "@/lib/equipment";
 
-const AUTH_COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax",
-  path: "/",
-  maxAge: 60 * 60 * 24 * 180,
-};
-
-export async function loginAction(formData) {
-  const passcode = String(formData.get("passcode") ?? "");
-  const next = String(formData.get("next") ?? "/calendar");
-  const backToLogin = (error) => `/login?next=${encodeURIComponent(next)}&error=${error}`;
-
-  // The passcode is shared and short by design, so the only thing standing
-  // between a public URL and the chapter's data is how many guesses a stranger
-  // gets. Check the limit before spending a Redis read on the passcode itself.
-  const clientId = clientIdFromForwardedFor((await headers()).get("x-forwarded-for"));
-  if (await isLoginLockedOut(clientId)) {
-    redirect(backToLogin("locked"));
-  }
-
-  if (!(await isValidPasscode(passcode))) {
-    await registerFailedLogin(clientId);
-    redirect(backToLogin("1"));
-  }
-
-  await clearFailedLogins(clientId);
-
-  const cookieStore = await cookies();
-  cookieStore.set(AUTH_COOKIE_NAME, await expectedAuthCookieValue(), AUTH_COOKIE_OPTIONS);
-
-  redirect(next);
-}
-
 /**
  * Rotates the shared passcode. Every other logged-in browser is signed out,
  * since their cookie holds the old hash — which is exactly what you want after
@@ -93,6 +53,7 @@ export async function loginAction(formData) {
  * so they aren't kicked out of the page they're standing on.
  */
 export async function updatePasscodeAction(formData) {
+  await requireSession();
   const passcode = String(formData.get("passcode") ?? "");
   const confirmation = String(formData.get("passcodeConfirm") ?? "");
 
@@ -125,6 +86,7 @@ function parseActualSpend(formData) {
 // (categorySpendStats, equipmentExpectedCents) rather than shipping every
 // semester's raw event history to the client to recompute them there.
 export async function getEditorSupportingDataAction(semesterId, semesterIds) {
+  await requireSession();
   const { drinkPresets, drinkItemGroups, equipmentItems, allEvents } = await getEditorSupportingData(
     semesterId,
     semesterIds,
@@ -140,6 +102,7 @@ export async function getEditorSupportingDataAction(semesterId, semesterIds) {
 }
 
 export async function saveEventAction(formData) {
+  await requireSession();
   const semesterId = String(formData.get("semesterId"));
   const id = String(formData.get("id") || crypto.randomUUID());
   const startDate = String(formData.get("startDate"));
@@ -210,6 +173,7 @@ export async function moveEventAction(
   fromDate,
   toDate,
 ) {
+  await requireSession();
   if (fromDate === toDate) return;
 
   const events = await getEvents(semesterId);
@@ -238,12 +202,14 @@ export async function deleteEventAction(
   semesterId,
   eventId,
 ) {
+  await requireSession();
   await deleteEventRecord(semesterId, eventId);
   revalidatePath("/calendar");
   revalidatePath("/budget");
 }
 
 export async function saveContactsAction(formData) {
+  await requireSession();
   const semesterId = String(formData.get("semesterId"));
   const ids = formData.getAll("contactId");
   const orgs = formData.getAll("contactOrg");
@@ -274,6 +240,7 @@ export async function saveContactsAction(formData) {
 }
 
 export async function saveDrinkPresetsAction(formData) {
+  await requireSession();
   const presets = {};
   for (const [key, value] of formData.entries()) {
     if (!key.startsWith("preset::")) continue;
@@ -298,6 +265,7 @@ export async function saveDrinkPresetsAction(formData) {
 // would only add a read-modify-write race against the presets form that
 // auto-saves from the same page.
 export async function saveDrinkGroupsAction(formData) {
+  await requireSession();
   const groups = [];
   const groupById = new Map();
   const seenNames = new Set();
@@ -332,6 +300,7 @@ export async function saveDrinkGroupsAction(formData) {
 }
 
 export async function addDrinkItemAction(formData) {
+  await requireSession();
   const name = String(formData.get("itemName") ?? "").trim();
   const groupId = String(formData.get("itemGroupId") ?? "");
   const price = Number.parseFloat(String(formData.get("itemPrice") ?? ""));
@@ -354,6 +323,7 @@ export async function addDrinkItemAction(formData) {
 }
 
 export async function saveEquipmentAction(formData) {
+  await requireSession();
   const semesterId = String(formData.get("semesterId"));
   const id = String(formData.get("id") || crypto.randomUUID());
   const priorityRaw = String(formData.get("priority") ?? "").trim();
@@ -385,17 +355,20 @@ export async function saveEquipmentAction(formData) {
  * row is simply one that isn't in the submission.
  */
 export async function saveMarkersAction(formData) {
+  await requireSession();
   const semesterId = String(formData.get("semesterId"));
   await saveMarkers(semesterId, parseMarkers(formData, semesterId));
   revalidatePath("/calendar");
 }
 
 export async function deleteEquipmentAction(id) {
+  await requireSession();
   await deleteEquipmentItemRecord(id);
   revalidatePath("/budget");
 }
 
 export async function saveBrandingAction(formData) {
+  await requireSession();
   const chapterName = String(formData.get("chapterName") ?? "").trim();
   if (!chapterName) redirect("/settings?error=chapterName");
 
@@ -429,6 +402,7 @@ export async function saveBrandingAction(formData) {
  * with example data.
  */
 export async function completeSetupAction(formData) {
+  await requireSession();
   const existing = await getSemestersFresh();
   if (existing.length > 0) redirect("/calendar");
 
@@ -459,6 +433,7 @@ export async function completeSetupAction(formData) {
 }
 
 export async function createSemesterAction(formData) {
+  await requireSession();
   const { fields, error } = parseSemesterFields(formData);
   if (error) redirect(`/settings?error=${error}`);
 
@@ -473,6 +448,7 @@ export async function createSemesterAction(formData) {
 }
 
 export async function updateSemesterAction(formData) {
+  await requireSession();
   const id = String(formData.get("semesterId"));
   const { fields, error } = parseSemesterFields(formData);
   if (error) redirect(`/settings?error=${error}`);
@@ -487,6 +463,7 @@ export async function updateSemesterAction(formData) {
 }
 
 export async function deleteSemesterAction(formData) {
+  await requireSession();
   const id = String(formData.get("semesterId"));
   const semesters = await getSemesters();
 
@@ -511,6 +488,7 @@ export async function deleteSemesterAction(formData) {
 }
 
 export async function updateMaxBudgetAction(formData) {
+  await requireSession();
   const semesterId = String(formData.get("semesterId"));
   const maxBudgetCents = parseDollarsToCents(formData.get("maxBudget")) ?? 0;
 
@@ -523,6 +501,7 @@ export async function updateMaxBudgetAction(formData) {
 }
 
 export async function saveCategoriesAction(formData) {
+  await requireSession();
   const ids = formData.getAll("categoryId").map(String);
   const labels = formData.getAll("categoryLabel").map(String);
   const colors = formData.getAll("categoryColor").map(String);
@@ -553,6 +532,7 @@ export async function saveCategoriesAction(formData) {
 }
 
 export async function dismissOnboardingChecklistAction() {
+  await requireSession();
   await dismissOnboardingChecklist();
   revalidatePath("/calendar");
 }
