@@ -34,6 +34,7 @@ import { parseISODate, formatISODate, addDays } from "@/lib/dates";
 import {
   AUTH_COOKIE_NAME,
   AUTH_COOKIE_OPTIONS,
+  createSessionToken,
   setPasscode,
   MIN_PASSCODE_LENGTH,
 } from "@/lib/auth";
@@ -48,9 +49,9 @@ import { equipmentItemsForSemester } from "@/lib/equipment";
 
 /**
  * Rotates the shared passcode. Every other logged-in browser is signed out,
- * since their cookie holds the old hash — which is exactly what you want after
- * exec turnover or a leak. The officer doing the rotating gets a fresh cookie
- * so they aren't kicked out of the page they're standing on.
+ * since their session was issued under the old passcode — which is exactly
+ * what you want after exec turnover or a leak. The officer doing the rotating
+ * gets a fresh session so they aren't kicked out of the page they're on.
  */
 export async function updatePasscodeAction(formData) {
   await requireSession();
@@ -60,11 +61,21 @@ export async function updatePasscodeAction(formData) {
   if (passcode.length < MIN_PASSCODE_LENGTH) redirect("/settings?error=passcodeShort");
   if (passcode !== confirmation) redirect("/settings?error=passcodeMismatch");
 
-  const value = await setPasscode(passcode);
+  await setPasscode(passcode);
   const cookieStore = await cookies();
-  cookieStore.set(AUTH_COOKIE_NAME, value, AUTH_COOKIE_OPTIONS);
+  cookieStore.set(AUTH_COOKIE_NAME, await createSessionToken(), AUTH_COOKIE_OPTIONS);
 
   redirect("/settings?saved=passcode");
+}
+
+/**
+ * Signs this browser out. Other browsers stay signed in; changing the
+ * passcode in Settings is what signs everyone out.
+ */
+export async function signOutAction() {
+  await requireSession();
+  (await cookies()).delete(AUTH_COOKIE_NAME);
+  redirect("/login");
 }
 
 function parseActualSpend(formData) {

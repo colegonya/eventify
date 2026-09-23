@@ -5,7 +5,7 @@ import { cookies, headers } from "next/headers";
 import {
   AUTH_COOKIE_NAME,
   AUTH_COOKIE_OPTIONS,
-  expectedAuthCookieValue,
+  createSessionToken,
   isValidPasscode,
 } from "@/lib/auth";
 import {
@@ -40,7 +40,7 @@ export async function loginAction(formData) {
   await clearFailedLogins(clientId);
 
   const cookieStore = await cookies();
-  cookieStore.set(AUTH_COOKIE_NAME, await expectedAuthCookieValue(), AUTH_COOKIE_OPTIONS);
+  cookieStore.set(AUTH_COOKIE_NAME, await createSessionToken(), AUTH_COOKIE_OPTIONS);
 
   redirect(next);
 }

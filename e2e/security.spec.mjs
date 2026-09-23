@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
-import { E2E_PASSCODE } from "./env.mjs";
+import { createHash } from "node:crypto";
+import { E2E_BASE_URL, E2E_PASSCODE } from "./env.mjs";
 import { serverActionId, testRedis } from "./support.mjs";
 
 // Not logged in: these run in a browser context with no cookies.
@@ -20,7 +21,7 @@ async function callActionWithoutCookie(request, path, exportedName) {
 }
 
 test("server actions do nothing without a login cookie", async ({ request }) => {
-  const passcodeBefore = await redis.get("authPasscodeHash");
+  const passcodeBefore = await redis.get("authPasscode");
   const dismissedBefore = await redis.get("onboardingChecklistDismissed");
 
   // /login is the one page the proxy lets through; this is the hole step 1
@@ -33,7 +34,7 @@ test("server actions do nothing without a login cookie", async ({ request }) => 
     }
   }
 
-  expect(await redis.get("authPasscodeHash")).toEqual(passcodeBefore);
+  expect(await redis.get("authPasscode")).toEqual(passcodeBefore);
   expect(await redis.get("onboardingChecklistDismissed")).toEqual(dismissedBefore);
 });
 
@@ -42,4 +43,31 @@ test("the login redirect never leaves the site", async ({ page }) => {
   await page.getByLabel("Passcode").fill(E2E_PASSCODE);
   await page.getByRole("button", { name: "Enter" }).click();
   await expect(page).toHaveURL(/127\.0\.0\.1:\d+\/calendar/);
+});
+
+test("signing out ends the session in that browser", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByLabel("Passcode").fill(E2E_PASSCODE);
+  await page.getByRole("button", { name: "Enter" }).click();
+  await expect(page).toHaveURL(/\/calendar/);
+
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page).toHaveURL(/\/login/);
+
+  await page.goto("/budget");
+  await expect(page).toHaveURL(/\/login\?next=%2Fbudget/);
+});
+
+// Before sessions were signed, the cookie was the SHA-256 of the passcode, so
+// anyone who knew or cracked the passcode could forge one.
+test("an old-style cookie holding the passcode hash no longer gets in", async ({ page, context }) => {
+  await context.addCookies([
+    {
+      name: "social_calendar_access",
+      value: createHash("sha256").update(E2E_PASSCODE).digest("hex"),
+      url: E2E_BASE_URL,
+    },
+  ]);
+  await page.goto("/calendar");
+  await expect(page).toHaveURL(/\/login/);
 });
