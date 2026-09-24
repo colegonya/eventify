@@ -1,5 +1,7 @@
 "use client";
 
+import { SubmitButton } from "@/components/SubmitButton";
+
 /**
  * Lives inside the semester's edit form and overrides its action via
  * formAction, so it reuses that form's hidden semesterId instead of needing a
@@ -7,8 +9,9 @@
  */
 export function DeleteSemesterButton({ label, action, disabled }) {
   return (
-    <button
-      type="submit"
+    <SubmitButton
+      intent="delete"
+      pendingLabel="Deleting…"
       formAction={action}
       formNoValidate
       disabled={disabled}
@@ -26,6 +29,6 @@ export function DeleteSemesterButton({ label, action, disabled }) {
       className="rounded-sm border border-red-300 px-3 py-1.5 text-sm text-red-700 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:border-brand-ink/10 disabled:text-brand-ink/30 disabled:hover:bg-transparent"
     >
       Delete
-    </button>
+    </SubmitButton>
   );
 }

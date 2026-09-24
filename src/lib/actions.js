@@ -52,6 +52,14 @@ import { isHexColor } from "@/lib/color";
 import { computeCategorySpendStats, computeEquipmentContribution } from "@/lib/budget";
 import { equipmentItemsForSemester } from "@/lib/equipment";
 
+// Where a server-rendered form goes after a successful save. `saved` tells the
+// page which "✓ Saved" notice to show beside which button (see SavedNotice),
+// and `at` makes each save a distinct URL so a second save shows it again.
+function savedUrl(path, params) {
+  const query = new URLSearchParams({ ...params, at: String(Date.now()) });
+  return `${path}?${query}`;
+}
+
 /**
  * Rotates the shared passcode. Every other logged-in browser is signed out,
  * since their session was issued under the old passcode — which is exactly
@@ -70,7 +78,7 @@ export async function updatePasscodeAction(formData) {
   const cookieStore = await cookies();
   cookieStore.set(AUTH_COOKIE_NAME, await createSessionToken(), AUTH_COOKIE_OPTIONS);
 
-  redirect("/settings?saved=passcode");
+  redirect(savedUrl("/settings", { saved: "passcode" }));
 }
 
 /**
@@ -330,7 +338,7 @@ export async function saveBrandingAction(formData) {
   await renameChapterInEventHosts(previousName, chapterName);
 
   revalidatePath("/", "layout");
-  redirect("/settings");
+  redirect(savedUrl("/settings", { saved: "organization" }));
 }
 
 /**
@@ -400,7 +408,7 @@ export async function updateSemesterAction(formData) {
   await saveSemester({ ...semester, ...fields });
   revalidatePath("/calendar");
   revalidatePath("/budget");
-  redirect("/settings");
+  redirect(savedUrl("/settings", { saved: "semester", id }));
 }
 
 export async function deleteSemesterAction(formData) {
@@ -425,7 +433,7 @@ export async function deleteSemesterAction(formData) {
 
   revalidatePath("/calendar");
   revalidatePath("/budget");
-  redirect("/settings");
+  redirect(savedUrl("/settings", { saved: "semesterDeleted" }));
 }
 
 export async function updateMaxBudgetAction(formData) {
@@ -439,7 +447,7 @@ export async function updateMaxBudgetAction(formData) {
 
   await saveSemester({ ...semester, maxBudgetCents });
   revalidatePath("/budget");
-  redirect(`/budget?semester=${encodeURIComponent(semesterId)}`);
+  redirect(savedUrl("/budget", { semester: semesterId, saved: "budget" }));
 }
 
 export async function saveCategoriesAction(formData) {
