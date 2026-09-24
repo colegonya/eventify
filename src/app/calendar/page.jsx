@@ -166,6 +166,14 @@ export default async function CalendarPage({
   });
   const addDate = view === "week" ? weekAnchor : `${month}-01`;
 
+  // Jumps to the range containing today, in whichever view is open. Today is
+  // the organization's date (see todayInTimeZone), not the server's.
+  const todayHref =
+    view === "week"
+      ? buildCalendarHref(currentParams, { semester: semester.id, view: "week", week: todayIso, month: null })
+      : buildCalendarHref(currentParams, { semester: semester.id, month: todayIso.slice(0, 7), view: null, week: null });
+  const unit = view === "week" ? "week" : "month";
+
   const toggle = (label, href, active) => (
     <Link
       href={href}
@@ -195,15 +203,21 @@ export default async function CalendarPage({
           <Masthead as="h2">{rangeLabel}</Masthead>
           <div className="flex items-center gap-1">
             <Link
+              href={todayHref}
+              className="mr-1 rounded-sm border border-brand-ink/20 px-2.5 py-1 text-sm font-medium text-brand-ink transition-colors hover:bg-brand-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+            >
+              Today
+            </Link>
+            <Link
               href={prevHref}
-              aria-label="Previous month"
+              aria-label={`Previous ${unit}`}
               className="rounded-sm px-2 py-1.5 text-sm text-brand-ink/75 transition-colors hover:bg-brand-ink/5 hover:text-brand-ink"
             >
               <span aria-hidden>←</span>
             </Link>
             <Link
               href={nextHref}
-              aria-label="Next month"
+              aria-label={`Next ${unit}`}
               className="rounded-sm px-2 py-1.5 text-sm text-brand-ink/75 transition-colors hover:bg-brand-ink/5 hover:text-brand-ink"
             >
               <span aria-hidden>→</span>
@@ -253,7 +267,9 @@ export default async function CalendarPage({
 
       <Legend categories={categories} />
 
-      <ScrollTodayIntoView containerId={CALENDAR_GRID_ID} />
+      {/* Keyed on the visible range: navigating keeps this mounted, and it
+          only centers today's column when it mounts. */}
+      <ScrollTodayIntoView key={`${view}-${month}-${weekAnchor}`} containerId={CALENDAR_GRID_ID} />
 
       <div
         id={CALENDAR_GRID_ID}
