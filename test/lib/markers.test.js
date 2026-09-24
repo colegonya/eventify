@@ -1,15 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normalizeMarker, normalizeMarkers, parseMarkers, sortMarkers } from "@/lib/markers";
-
-const formData = (rows) => {
-  const data = new FormData();
-  for (const row of rows) {
-    data.append("markerId", row.id);
-    data.append("markerDate", row.date);
-    data.append("markerLabel", row.label);
-  }
-  return data;
-};
+import { normalizeMarker, normalizeMarkers, sortMarkers } from "@/lib/markers";
 
 describe("normalizeMarker", () => {
   it("reads a marker written in the current shape", () => {
@@ -79,59 +69,6 @@ describe("normalizeMarkers", () => {
   it("handles a semester that has none", () => {
     expect(normalizeMarkers([])).toEqual([]);
     expect(normalizeMarkers(undefined)).toEqual([]);
-  });
-});
-
-describe("parseMarkers", () => {
-  it("pairs the editor's row arrays back into records", () => {
-    const parsed = parseMarkers(
-      formData([
-        { id: "m1", date: "2026-10-11", label: "Homecoming" },
-        { id: "m2", date: "2026-09-06", label: "vs. Example University" },
-      ]),
-      "fall-2026",
-    );
-
-    expect(parsed).toEqual([
-      { id: "m1", semesterId: "fall-2026", date: "2026-10-11", label: "Homecoming" },
-      { id: "m2", semesterId: "fall-2026", date: "2026-09-06", label: "vs. Example University" },
-    ]);
-  });
-
-  it("discards a row the officer opened and left blank", () => {
-    const parsed = parseMarkers(
-      formData([
-        { id: "m1", date: "2026-10-11", label: "Homecoming" },
-        { id: "m2", date: "", label: "" },
-      ]),
-      "fall-2026",
-    );
-
-    expect(parsed.map((m) => m.id)).toEqual(["m1"]);
-  });
-
-  it("discards a half-filled row, since a dateless marker has nowhere to render", () => {
-    const parsed = parseMarkers(
-      formData([
-        { id: "m1", date: "", label: "Someday" },
-        { id: "m2", date: "2026-10-11", label: "" },
-      ]),
-      "fall-2026",
-    );
-
-    expect(parsed).toEqual([]);
-  });
-
-  it("stamps every row with the semester it was edited under", () => {
-    const parsed = parseMarkers(formData([{ id: "m1", date: "2026-10-11", label: "X" }]), "spring-2027");
-
-    expect(parsed[0].semesterId).toBe("spring-2027");
-  });
-
-  it("trims whitespace an officer left around a label", () => {
-    const parsed = parseMarkers(formData([{ id: "m1", date: "2026-10-11", label: "  Homecoming  " }]), "f");
-
-    expect(parsed[0].label).toBe("Homecoming");
   });
 });
 

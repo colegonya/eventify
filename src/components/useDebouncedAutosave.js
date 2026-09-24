@@ -7,7 +7,8 @@ const SAVED_FLASH_MS = 2000;
 
 /**
  * The autosave every always-editable table on the app uses: wait for typing to
- * stop, post the whole form, then flash "Saved" for a couple of seconds.
+ * stop, post the whole form, then flash "Saved" for a couple of seconds, or
+ * show why the save was refused until a later one succeeds.
  *
  * Four components had their own hand-copied version of this — the three
  * settings-tab editors and the contacts table — which is four places to get
@@ -19,6 +20,8 @@ const SAVED_FLASH_MS = 2000;
 export function useDebouncedAutosave(saveAction, { onSaved } = {}) {
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
+  // Why the last save didn't go through, until the next one does.
+  const [error, setError] = useState(null);
   const formRef = useRef(null);
   const saveTimeout = useRef(null);
 
@@ -37,7 +40,22 @@ export function useDebouncedAutosave(saveAction, { onSaved } = {}) {
       if (!formRef.current) return;
       const formData = new FormData(formRef.current);
       startTransition(async () => {
-        await saveAction(formData);
+        let result;
+        try {
+          result = await saveAction(formData);
+        } catch {
+          setSaved(false);
+          setError("Check your connection; your last change is still on screen.");
+          return;
+        }
+        // Validation failures come back as { ok: false, error } rather than
+        // a throw, so the officer sees what to fix. See lib/validation.js.
+        if (result?.ok === false) {
+          setSaved(false);
+          setError(result.error);
+          return;
+        }
+        setError(null);
         setSaved(true);
         setTimeout(() => setSaved(false), SAVED_FLASH_MS);
         // scheduleSave is rebuilt every render, so this closure always holds
@@ -52,6 +70,7 @@ export function useDebouncedAutosave(saveAction, { onSaved } = {}) {
     scheduleSave,
     isPending,
     saved,
-    statusLabel: isPending ? "Saving…" : saved ? "Saved" : "",
+    error,
+    statusLabel: isPending ? "Saving…" : error ? `Not saved: ${error}` : saved ? "Saved" : "",
   };
 }

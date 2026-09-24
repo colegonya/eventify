@@ -4,6 +4,7 @@ import { useState } from "react";
 import { saveMarkersAction } from "@/lib/actions";
 import { sortMarkers } from "@/lib/markers";
 import { useDebouncedAutosave } from "@/components/useDebouncedAutosave";
+import { AutosaveStatus } from "@/components/AutosaveStatus";
 import { useModalDialog } from "@/components/useModalDialog";
 
 let nextRowKey = 0;
@@ -19,7 +20,7 @@ function MarkersEditor({ semesterId, markers, onClose }) {
     sortMarkers(markers).map((m) => ({ key: `existing-${m.id}`, ...m })),
   );
 
-  const { formRef, scheduleSave, statusLabel } = useDebouncedAutosave(saveMarkersAction);
+  const { formRef, scheduleSave, statusLabel, error } = useDebouncedAutosave(saveMarkersAction);
 
   const addRow = () =>
     setRows((rs) => [
@@ -102,7 +103,7 @@ function MarkersEditor({ semesterId, markers, onClose }) {
         >
           + Add marker
         </button>
-        <span className="text-sm text-brand-ink/75">{statusLabel}</span>
+        <AutosaveStatus label={statusLabel} error={error} />
       </div>
     </form>
   );

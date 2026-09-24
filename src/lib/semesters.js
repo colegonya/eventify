@@ -1,4 +1,6 @@
-import { parseDollarsToCents } from "@/lib/money";
+import { dollars, isRealIsoDate, LIMITS } from "@/lib/validation";
+
+const requiredBudget = dollars("a budget", { required: true });
 
 /**
  * Semester ids show up in URLs (?semester=...) and Redis keys, so they're
@@ -23,6 +25,9 @@ export function semesterIdFromLabel(label, existingIds) {
  * messages in production, so a throw would show the exec board a generic
  * "something went wrong" instead of what they actually got wrong. The caller
  * redirects back with ?error=<code>, the same pattern loginAction uses.
+ *
+ * The budget is required. A blank one used to save as a $0 cap, which reads
+ * as "already over budget" on the first dollar spent.
  */
 export function parseSemesterFields(formData) {
   const label = String(formData.get("label") ?? "").trim();
@@ -30,15 +35,18 @@ export function parseSemesterFields(formData) {
   const endDate = String(formData.get("endDate") ?? "").trim();
 
   if (!label) return { error: "name" };
-  if (!startDate || !endDate) return { error: "dates" };
+  if (label.length > LIMITS.shortName) return { error: "nameLength" };
+  if (!isRealIsoDate(startDate) || !isRealIsoDate(endDate)) return { error: "dates" };
   if (endDate < startDate) return { error: "order" };
 
-  return {
-    fields: {
-      label,
-      startDate,
-      endDate,
-      maxBudgetCents: parseDollarsToCents(formData.get("maxBudget")) ?? 0,
-    },
-  };
+  const budget = requiredBudget.safeParse(String(formData.get("maxBudget") ?? ""));
+  if (!budget.success) return { error: "budget" };
+
+  return { fields: { label, startDate, endDate, maxBudgetCents: budget.data } };
+}
+
+/** The Budget page's cap field alone: cents, or null when it isn't a usable amount. */
+export function parseMaxBudget(value) {
+  const budget = requiredBudget.safeParse(String(value ?? ""));
+  return budget.success ? budget.data : null;
 }

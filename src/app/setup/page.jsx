@@ -12,6 +12,8 @@ const errorMessages = (words) => ({
   name: `Give the ${words.periodLower} a name.`,
   dates: `A ${words.periodLower} needs both a start and an end date.`,
   order: "The end date can't be before the start date.",
+  budget: `Enter a budget for the ${words.periodLower}, even a rough one.`,
+  nameLength: `Keep the ${words.periodLower} name to 60 characters or fewer.`,
 });
 
 export default async function SetupPage({ searchParams }) {

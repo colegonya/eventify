@@ -126,3 +126,19 @@ export function eventDatesInRange(startDate, endDate) {
   }
   return dates;
 }
+
+/** A real calendar date as YYYY-MM-DD, between 2000 and 2100. Rejects 2026-02-30. */
+export function isRealIsoDate(value) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  if (year < 2000 || year > 2100) return false;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
+/** A real month as YYYY-MM, between 2000 and 2100. */
+export function isRealYearMonth(value) {
+  return typeof value === "string" && /^\d{4}-\d{2}$/.test(value) && isRealIsoDate(`${value}-01`);
+}
+
+export const isTime = (value) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value);

@@ -34,7 +34,7 @@ describe("semesterIdFromLabel", () => {
 });
 
 describe("parseSemesterFields", () => {
-  const valid = { label: "Fall 2026", startDate: "2026-08-24", endDate: "2026-12-12" };
+  const valid = { label: "Fall 2026", startDate: "2026-08-24", endDate: "2026-12-12", maxBudget: "10000" };
 
   it("returns the parsed fields for a complete form", () => {
     const result = parseSemesterFields(formData({ ...valid, maxBudget: "10000" }));
@@ -48,9 +48,19 @@ describe("parseSemesterFields", () => {
     });
   });
 
-  it("defaults a missing budget to zero rather than null", () => {
-    // Downstream cap math divides by this, so it has to be a number.
-    expect(parseSemesterFields(formData(valid)).fields.maxBudgetCents).toBe(0);
+  it("refuses a blank or unusable budget instead of saving a $0 cap", () => {
+    // This used to default to 0, which made every term read as over budget on
+    // the first dollar spent.
+    for (const maxBudget of ["", "   ", "abc", "-50"]) {
+      expect(parseSemesterFields(formData({ ...valid, maxBudget })).error).toBe("budget");
+    }
+    expect(parseSemesterFields(formData({ ...valid, maxBudget: "0" })).fields.maxBudgetCents).toBe(0);
+  });
+
+  it("refuses dates that aren't real, and names that are too long", () => {
+    expect(parseSemesterFields(formData({ ...valid, startDate: "2026-02-30" })).error).toBe("dates");
+    expect(parseSemesterFields(formData({ ...valid, endDate: "someday" })).error).toBe("dates");
+    expect(parseSemesterFields(formData({ ...valid, label: "x".repeat(61) })).error).toBe("nameLength");
   });
 
   it("names which field was wrong instead of throwing", () => {

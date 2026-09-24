@@ -133,10 +133,11 @@ export function EventForm({
         setFormError(null);
         startTransition(async () => {
           try {
-            await saveEventAction(formData);
-            onClose();
-          } catch (err) {
-            setFormError(err instanceof Error ? err.message : "Failed to save event.");
+            const result = await saveEventAction(formData);
+            if (result?.ok) onClose();
+            else setFormError(result?.error ?? "The event wasn't saved. Try again.");
+          } catch {
+            setFormError("The event wasn't saved. Check your connection and try again.");
           }
         });
       }}
@@ -233,8 +234,6 @@ export function EventForm({
             <input type="date" name="endDate" defaultValue={event?.endDate ?? ""} className={input} />
           </label>
         </div>
-
-        {formError && <p className="text-sm text-red-600">{formError}</p>}
 
         <div className="grid grid-cols-2 gap-4">
           <label className={label}>
@@ -454,6 +453,12 @@ export function EventForm({
         <textarea name="notes" rows={3} defaultValue={event?.notes} className={input} />
       </label>
 
+      {formError && (
+        <p role="alert" className="-mb-2 text-sm font-medium text-red-700">
+          {formError}
+        </p>
+      )}
+
       <div className="flex items-center justify-between border-t border-paper-line pt-5">
         <button
           type="submit"
@@ -481,8 +486,13 @@ export function EventForm({
               disabled={isPending}
               onClick={() =>
                 startTransition(async () => {
-                  await deleteEventAction(semesterId, event.id);
-                  onClose();
+                  try {
+                    const result = await deleteEventAction(semesterId, event.id);
+                    if (result?.ok) onClose();
+                    else setFormError(result?.error ?? "The event wasn't deleted. Try again.");
+                  } catch {
+                    setFormError("The event wasn't deleted. Check your connection and try again.");
+                  }
                 })
               }
               className="rounded-sm bg-red-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:opacity-60"

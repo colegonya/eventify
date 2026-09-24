@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildCalendarHref } from "@/lib/calendarUrl";
+import { buildCalendarHref, readCalendarParams } from "@/lib/calendarUrl";
 
 const params = (query) => new URLSearchParams(query);
 
@@ -56,5 +56,26 @@ describe("buildCalendarHref", () => {
 
   it("returns the bare path when nothing is left to encode", () => {
     expect(buildCalendarHref(params(""), {})).toBe("/calendar");
+  });
+});
+
+describe("readCalendarParams", () => {
+  it("uses valid params as given", () => {
+    expect(readCalendarParams({ view: "week", month: "2026-10", week: "2026-10-14" }, "2026-09")).toEqual({
+      view: "week",
+      month: "2026-10",
+      week: "2026-10-14",
+    });
+  });
+
+  it("falls back to the defaults for anything unusable instead of breaking the page", () => {
+    // ?month=garbage rendered "undefined NaN"; ?week=nope crashed the page.
+    expect(readCalendarParams({ month: "garbage", week: "nope", view: "sideways" }, "2026-09")).toEqual({
+      view: "month",
+      month: "2026-09",
+      week: "2026-09-01",
+    });
+    expect(readCalendarParams({ month: "2026-13" }, "2026-09").month).toBe("2026-09");
+    expect(readCalendarParams({ month: ["2026-10", "2026-11"] }, "2026-09").month).toBe("2026-09");
   });
 });

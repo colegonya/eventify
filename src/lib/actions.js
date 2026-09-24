@@ -16,7 +16,9 @@ import {
   saveSemester,
   deleteSemester as deleteSemesterRecord,
   seedExampleData,
+  getContacts,
   saveContacts,
+  getMarkers,
   saveMarkers,
   saveDrinkPresets,
   getDrinkGroups,
@@ -30,7 +32,7 @@ import {
   dismissOnboardingChecklist,
   getEditorSupportingData,
 } from "@/lib/data";
-import { parseISODate, formatISODate, addDays } from "@/lib/dates";
+import { parseISODate, formatISODate, addDays, daysBetween } from "@/lib/dates";
 import {
   AUTH_COOKIE_NAME,
   AUTH_COOKIE_OPTIONS,
@@ -39,9 +41,12 @@ import {
   MIN_PASSCODE_LENGTH,
 } from "@/lib/auth";
 import { requireSession } from "@/lib/session";
-import { parseDollarsToCents } from "@/lib/money";
-import { parseMarkers } from "@/lib/markers";
-import { semesterIdFromLabel, parseSemesterFields } from "@/lib/semesters";
+import { semesterIdFromLabel, parseSemesterFields, parseMaxBudget } from "@/lib/semesters";
+import { fail, isRealIsoDate, LIMITS, ok } from "@/lib/validation";
+import { parseEventForm } from "@/lib/forms/event";
+import { parseEquipmentForm } from "@/lib/forms/equipment";
+import { parseCategoriesForm, parseContactsForm, parseMarkersForm } from "@/lib/forms/lists";
+import { parseDrinkGroupsForm, parseDrinkPresetsForm, parseNewDrinkItem } from "@/lib/forms/drinks";
 import { BRAND_COLOR_VARS } from "@/lib/config";
 import { isHexColor } from "@/lib/color";
 import { computeCategorySpendStats, computeEquipmentContribution } from "@/lib/budget";
@@ -78,26 +83,16 @@ export async function signOutAction() {
   redirect("/login");
 }
 
-function parseActualSpend(formData) {
-  const names = formData.getAll("actualSpendName");
-  const amounts = formData.getAll("actualSpendAmount");
-  const items = [];
-  for (let i = 0; i < names.length; i++) {
-    const name = String(names[i] ?? "").trim();
-    const amountCents = parseDollarsToCents(amounts[i] ?? null);
-    if (!name || amountCents === null) continue;
-    items.push({ id: crypto.randomUUID(), name, amountCents });
-  }
-  return items;
-}
-
 // Called directly from EditorProvider (a client component) when the event
 // editor dialog opens, the same way DayCell calls moveEventAction directly —
 // not tied to a <form>. Computes the editor's supporting figures server-side
 // (categorySpendStats, equipmentExpectedCents) rather than shipping every
 // semester's raw event history to the client to recompute them there.
-export async function getEditorSupportingDataAction(semesterId, semesterIds) {
+export async function getEditorSupportingDataAction(semesterId) {
   await requireSession();
+  // The semester list comes from the server, not the caller, so this can only
+  // ever read real semesters' events.
+  const semesterIds = (await getSemesters()).map((s) => s.id);
   const { drinkPresets, drinkItemGroups, equipmentItems, allEvents } = await getEditorSupportingData(
     semesterId,
     semesterIds,
@@ -112,65 +107,43 @@ export async function getEditorSupportingDataAction(semesterId, semesterIds) {
   return { drinkPresets, drinkItemGroups, categorySpendStats, equipmentExpectedCents };
 }
 
+/**
+ * Returns { ok, error, fieldErrors } rather than throwing, so the editor can
+ * say what to fix. See lib/validation.js.
+ */
 export async function saveEventAction(formData) {
   await requireSession();
-  const semesterId = String(formData.get("semesterId"));
-  const id = String(formData.get("id") || crypto.randomUUID());
-  const startDate = String(formData.get("startDate"));
-  const endDateRaw = String(formData.get("endDate") ?? "").trim();
-  const endDate = endDateRaw || startDate;
-  if (endDate < startDate) {
-    throw new Error("End date cannot be before start date.");
-  }
-  const hostShareFractionRaw = String(formData.get("hostShareFraction") ?? "").trim();
+  const semesterId = String(formData.get("semesterId") ?? "");
+  const [semester, categories, { chapterName }] = await Promise.all([
+    getSemester(semesterId),
+    getCategories(),
+    getBrandingSettings(),
+  ]);
+  if (!semester) return fail("That semester no longer exists. Reload the page.");
 
-  const category = String(formData.get("category") ?? "");
-  const [categories, { chapterName }] = await Promise.all([getCategories(), getBrandingSettings()]);
-  const matchedCategory = categories.find((c) => c.id === category);
+  const parsed = parseEventForm(formData, new Set(categories.map((c) => c.id)));
+  if (!parsed.ok) return parsed;
+  const fields = parsed.data;
+  const matchedCategory = categories.find((c) => c.id === fields.category);
 
   // The host field is read-only in the UI for every category except "other
-  // org" ones — for the chapter's own events, host is always meant to be the
-  // chapter itself, not something an officer picks. A readOnly input still
-  // submits its current value (unlike disabled), so a form left open across
-  // a chapter rename in another tab could submit a stale name. Resolve it
-  // fresh instead of trusting the client — but only once the category is
-  // positively confirmed to NOT be an other-org one. Categories are global
-  // and can be deleted at any time; if this event's category no longer
-  // exists (deleted after the form loaded, or a bad id), we can't tell which
-  // kind it was meant to be, so fall back to trusting the submitted host
-  // rather than guessing "not other-org" and silently overwriting a real
-  // custom host with the chapter's own name.
-  const host =
-    matchedCategory && !matchedCategory.isOtherOrgCategory
-      ? chapterName
-      : String(formData.get("host") ?? "").trim() || chapterName;
+  // org" ones: for the chapter's own events, host is always the chapter
+  // itself, not something an officer picks. A readOnly input still submits its
+  // current value, so a form left open across a chapter rename in another tab
+  // could submit a stale name. Resolve it fresh instead of trusting the
+  // client. Validation has already refused a category that doesn't exist, so
+  // which kind this is is never a guess.
+  const host = matchedCategory.isOtherOrgCategory ? fields.host || chapterName : chapterName;
 
-  const event = {
-    id,
+  await saveEvent({
+    id: String(formData.get("id") || crypto.randomUUID()),
     semesterId,
-    name: String(formData.get("name") ?? "").trim(),
-    category,
+    ...fields,
     host,
-    startDate,
-    endDate,
-    startTime: (formData.get("startTime")) || null,
-    endTime: (formData.get("endTime")) || null,
-    status: (formData.get("status")) ?? "confirmed",
-    expectedSpendCents: parseDollarsToCents(formData.get("expectedSpend")),
-    expectedSpendApproval: formData.get("expectedSpendApproved")
-      ? "approved"
-      : "pending",
-    actualSpend: parseActualSpend(formData),
-    hostShareFraction: hostShareFractionRaw
-      ? Number.parseFloat(hostShareFractionRaw) / 100
-      : null,
-    revenueCents: parseDollarsToCents(formData.get("revenue")),
-    notes: String(formData.get("notes") ?? ""),
-  };
-
-  await saveEvent(event);
+  });
   revalidatePath("/calendar");
   revalidatePath("/budget");
+  return ok();
 }
 
 /**
@@ -185,20 +158,15 @@ export async function moveEventAction(
   toDate,
 ) {
   await requireSession();
-  if (fromDate === toDate) return;
+  if (!isRealIsoDate(fromDate) || !isRealIsoDate(toDate)) return fail("That isn't a real date.");
+  if (fromDate === toDate) return ok();
 
   const events = await getEvents(semesterId);
   const event = events.find((e) => e.id === eventId);
-  if (!event) return;
+  if (!event) return fail("That event no longer exists. Reload the page.");
 
-  const MS_PER_DAY = 86_400_000;
-  const deltaDays = Math.round(
-    (parseISODate(toDate).getTime() - parseISODate(fromDate).getTime()) / MS_PER_DAY,
-  );
-  if (deltaDays === 0) return;
-
-  const shift = (iso) =>
-    formatISODate(addDays(parseISODate(iso), deltaDays));
+  const deltaDays = daysBetween(fromDate, toDate);
+  const shift = (iso) => formatISODate(addDays(parseISODate(iso), deltaDays));
 
   await saveEvent({
     ...event,
@@ -207,6 +175,7 @@ export async function moveEventAction(
   });
   revalidatePath("/calendar");
   revalidatePath("/budget");
+  return ok();
 }
 
 export async function deleteEventAction(
@@ -214,56 +183,35 @@ export async function deleteEventAction(
   eventId,
 ) {
   await requireSession();
-  await deleteEventRecord(semesterId, eventId);
+  await deleteEventRecord(String(semesterId), String(eventId));
   revalidatePath("/calendar");
   revalidatePath("/budget");
+  return ok();
 }
 
 export async function saveContactsAction(formData) {
   await requireSession();
-  const semesterId = String(formData.get("semesterId"));
-  const ids = formData.getAll("contactId");
-  const orgs = formData.getAll("contactOrg");
-  const positions = formData.getAll("contactPosition");
-  const statuses = formData.getAll("contactStatus");
-  const phones = formData.getAll("contactPhone");
-  const meetingDates = formData.getAll("contactMeetingDate");
-  const notes = formData.getAll("contactNotes");
+  const semesterId = String(formData.get("semesterId") ?? "");
+  if (!(await getSemester(semesterId))) return fail("That semester no longer exists. Reload the page.");
 
-  const contacts = [];
-  for (let i = 0; i < ids.length; i++) {
-    const position = String(positions[i] ?? "").trim();
-    if (!position) continue;
-    contacts.push({
-      id: String(ids[i] || crypto.randomUUID()),
-      semesterId,
-      org: String(orgs[i] ?? "").trim(),
-      position,
-      status: statuses[i],
-      phone: String(phones[i] ?? "").trim(),
-      meetingDate: String(meetingDates[i] ?? "").trim() || null,
-      notes: String(notes[i] ?? "").trim(),
-    });
-  }
+  const existingIds = new Set((await getContacts(semesterId)).map((c) => c.id));
+  const parsed = parseContactsForm(formData, semesterId, existingIds);
+  if (!parsed.ok) return parsed;
 
-  await saveContacts(semesterId, contacts);
+  await saveContacts(semesterId, parsed.data);
   revalidatePath("/contacts");
+  return ok();
 }
 
 export async function saveDrinkPresetsAction(formData) {
   await requireSession();
-  const presets = {};
-  for (const [key, value] of formData.entries()) {
-    if (!key.startsWith("preset::")) continue;
-    const [, categoryId, itemId] = key.split("::");
-    const qty = Number.parseInt(String(value), 10);
-    if (!qty) continue;
-    presets[categoryId] = { ...presets[categoryId], [itemId]: qty };
-  }
+  const parsed = parseDrinkPresetsForm(formData);
+  if (!parsed.ok) return parsed;
 
-  await saveDrinkPresets(presets);
+  await saveDrinkPresets(parsed.data);
   revalidatePath("/drinks");
   revalidatePath("/calendar");
+  return ok();
 }
 
 // Full replace of the drinkGroups catalog from the Drinks tab's editor form.
@@ -277,87 +225,50 @@ export async function saveDrinkPresetsAction(formData) {
 // auto-saves from the same page.
 export async function saveDrinkGroupsAction(formData) {
   await requireSession();
-  const groups = [];
-  const groupById = new Map();
-  const seenNames = new Set();
+  const existingItemIds = new Set((await getDrinkGroups()).flatMap((g) => g.items.map((item) => item.id)));
+  const parsed = parseDrinkGroupsForm(formData, existingItemIds);
+  if (!parsed.ok) return parsed;
 
-  for (const [key, value] of formData.entries()) {
-    const parts = key.split("::");
-    if (parts[0] === "group" && parts[2] === "label") {
-      const id = parts[1];
-      // A group whose label was blanked out mid-edit still holds its items —
-      // keep it under a placeholder rather than silently deleting them.
-      const group = { id, label: String(value).trim() || "Untitled group", items: [] };
-      groups.push(group);
-      groupById.set(id, group);
-    } else if (parts[0] === "item" && parts[3] === "name") {
-      const group = groupById.get(parts[1]);
-      const name = String(value).trim();
-      const lowerName = name.toLowerCase();
-      if (!group || !name || seenNames.has(lowerName)) continue;
-      seenNames.add(lowerName);
-      group.items.push({ id: parts[2], name, price: 0 });
-    } else if (parts[0] === "item" && parts[3] === "price") {
-      const item = groupById.get(parts[1])?.items.find((i) => i.id === parts[2]);
-      const price = Number.parseFloat(String(value));
-      if (!item || !Number.isFinite(price) || price < 0) continue;
-      item.price = price;
-    }
-  }
-
-  await saveDrinkGroups(groups);
+  await saveDrinkGroups(parsed.data);
   revalidatePath("/drinks");
   revalidatePath("/calendar");
+  return ok();
 }
 
 export async function addDrinkItemAction(formData) {
   await requireSession();
-  const name = String(formData.get("itemName") ?? "").trim();
-  const groupId = String(formData.get("itemGroupId") ?? "");
-  const price = Number.parseFloat(String(formData.get("itemPrice") ?? ""));
-  const id = String(formData.get("itemId") ?? "") || crypto.randomUUID();
+  const parsed = parseNewDrinkItem(formData, await getDrinkGroups());
+  if (!parsed.ok) return parsed;
 
-  if (!name || !Number.isFinite(price) || price < 0) {
-    return;
-  }
-
-  const groups = await getDrinkGroups();
-  if (!groups.some((g) => g.id === groupId)) return;
-  const alreadyExists = groups.some((g) =>
-    g.items.some((item) => item.name.toLowerCase() === name.toLowerCase()),
-  );
-  if (alreadyExists) return;
-
-  await addDrinkItemToGroup(groupId, { id, name, price });
+  const { groupId, ...item } = parsed.data;
+  await addDrinkItemToGroup(groupId, item);
   revalidatePath("/calendar");
   revalidatePath("/drinks");
+  return ok(item);
 }
 
 export async function saveEquipmentAction(formData) {
   await requireSession();
-  const semesterId = String(formData.get("semesterId"));
+  const semesterId = String(formData.get("semesterId") ?? "");
+  if (!(await getSemester(semesterId))) return fail("That semester no longer exists. Reload the page.");
+
+  const parsed = parseEquipmentForm(formData);
+  if (!parsed.ok) return parsed;
+
   const id = String(formData.get("id") || crypto.randomUUID());
-  const priorityRaw = String(formData.get("priority") ?? "").trim();
-  const actualSpend = parseActualSpend(formData);
-
   const existing = (await getEquipmentItems()).find((i) => i.id === id);
-
   const item = {
     id,
-    name: String(formData.get("name") ?? "").trim(),
-    priority: priorityRaw ? Number.parseInt(priorityRaw, 10) : 0,
-    expectedCostCents: parseDollarsToCents(formData.get("expectedCost")),
-    expectedCostApproval: formData.get("expectedCostApproved") ? "approved" : "pending",
-    actualSpend,
-    link: String(formData.get("link") ?? "").trim(),
-    notes: String(formData.get("notes") ?? ""),
+    ...parsed.data,
     // Pin to whichever semester it was first purchased in; clearing all
     // actual spend puts it back on the open wishlist.
-    purchasedSemesterId: actualSpend.length > 0 ? (existing?.purchasedSemesterId ?? semesterId) : null,
+    purchasedSemesterId:
+      parsed.data.actualSpend.length > 0 ? (existing?.purchasedSemesterId ?? semesterId) : null,
   };
 
   await saveEquipmentItem(item);
   revalidatePath("/budget");
+  return ok();
 }
 
 /**
@@ -367,21 +278,30 @@ export async function saveEquipmentAction(formData) {
  */
 export async function saveMarkersAction(formData) {
   await requireSession();
-  const semesterId = String(formData.get("semesterId"));
-  await saveMarkers(semesterId, parseMarkers(formData, semesterId));
+  const semesterId = String(formData.get("semesterId") ?? "");
+  if (!(await getSemester(semesterId))) return fail("That semester no longer exists. Reload the page.");
+
+  const existingIds = new Set((await getMarkers(semesterId)).map((m) => m.id));
+  const parsed = parseMarkersForm(formData, semesterId, existingIds);
+  if (!parsed.ok) return parsed;
+
+  await saveMarkers(semesterId, parsed.data);
   revalidatePath("/calendar");
+  return ok();
 }
 
 export async function deleteEquipmentAction(id) {
   await requireSession();
-  await deleteEquipmentItemRecord(id);
+  await deleteEquipmentItemRecord(String(id));
   revalidatePath("/budget");
+  return ok();
 }
 
 export async function saveBrandingAction(formData) {
   await requireSession();
   const chapterName = String(formData.get("chapterName") ?? "").trim();
   if (!chapterName) redirect("/settings?error=chapterName");
+  if (chapterName.length > LIMITS.shortName) redirect("/settings?error=length");
 
   // Blank means "fall back to the default palette", so empty is allowed
   // through; anything present has to be a real hex color, since these values
@@ -398,6 +318,9 @@ export async function saveBrandingAction(formData) {
   const orgNoun = String(formData.get("orgNoun") ?? "").trim();
   const periodNoun = String(formData.get("periodNoun") ?? "").trim();
   const title = String(formData.get("appTitle") ?? "").trim();
+  if (orgNoun.length > 30 || periodNoun.length > 30 || title.length > LIMITS.name) {
+    redirect("/settings?error=length");
+  }
 
   const { chapterName: previousName } = await getBrandingSettings();
   await saveBrandingSettings({ chapterName, colors, orgNoun, periodNoun, appTitle: title });
@@ -500,46 +423,30 @@ export async function deleteSemesterAction(formData) {
 
 export async function updateMaxBudgetAction(formData) {
   await requireSession();
-  const semesterId = String(formData.get("semesterId"));
-  const maxBudgetCents = parseDollarsToCents(formData.get("maxBudget")) ?? 0;
-
+  const semesterId = String(formData.get("semesterId") ?? "");
   const semester = await getSemester(semesterId);
-  if (!semester) return;
+  if (!semester) redirect("/budget");
+
+  const maxBudgetCents = parseMaxBudget(formData.get("maxBudget"));
+  if (maxBudgetCents === null) redirect(`/budget?semester=${encodeURIComponent(semesterId)}&error=budget`);
 
   await saveSemester({ ...semester, maxBudgetCents });
   revalidatePath("/budget");
-  redirect(`/budget?semester=${semesterId}`);
+  redirect(`/budget?semester=${encodeURIComponent(semesterId)}`);
 }
 
 export async function saveCategoriesAction(formData) {
   await requireSession();
-  const ids = formData.getAll("categoryId").map(String);
-  const labels = formData.getAll("categoryLabel").map(String);
-  const colors = formData.getAll("categoryColor").map(String);
-  const netsRevenueIds = new Set(formData.getAll("categoryNetsRevenue").map(String));
-  const excludeIds = new Set(formData.getAll("categoryExcludeFromBudgetTotal").map(String));
-  const otherOrgIds = new Set(formData.getAll("categoryIsOtherOrgCategory").map(String));
+  const existingIds = new Set((await getCategories()).map((c) => c.id));
+  const parsed = parseCategoriesForm(formData, existingIds);
+  if (!parsed.ok) return parsed;
 
-  const categories = [];
-  for (let i = 0; i < ids.length; i++) {
-    const label = labels[i]?.trim();
-    if (!label) continue;
-    const id = ids[i];
-    categories.push({
-      id,
-      label,
-      color: colors[i] || "#64748b",
-      netsRevenue: netsRevenueIds.has(id),
-      excludeFromBudgetTotal: excludeIds.has(id),
-      isOtherOrgCategory: otherOrgIds.has(id),
-    });
-  }
-
-  await saveCategories(categories);
+  await saveCategories(parsed.data);
   revalidatePath("/categories");
   revalidatePath("/calendar");
   revalidatePath("/budget");
   revalidatePath("/drinks");
+  return ok();
 }
 
 export async function dismissOnboardingChecklistAction() {

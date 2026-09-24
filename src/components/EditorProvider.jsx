@@ -54,7 +54,6 @@ export function EditorProvider({
   events,
   chapterName,
   semesterId,
-  semesterIds,
   maxBudgetCents,
   month,
   categories,
@@ -147,13 +146,13 @@ export function EditorProvider({
     import("@/components/EventForm");
     startTransition(async () => {
       setEditorData(null);
-      const data = await getEditorSupportingDataAction(semesterId, semesterIds);
+      const data = await getEditorSupportingDataAction(semesterId);
       if (!cancelled) setEditorData(data);
     });
     return () => {
       cancelled = true;
     };
-  }, [open, semesterId, semesterIds]);
+  }, [open, semesterId]);
 
   // Budget for the form's live headroom preview, excluding the event being
   // edited so its own spend isn't double-counted.

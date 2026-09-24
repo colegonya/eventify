@@ -6,6 +6,7 @@ import { saveContactsAction } from "@/lib/actions";
 import { ContactStatusPicker } from "@/components/ContactStatusPicker";
 import { pastDueMeetingDays, summarizeContacts } from "@/lib/contacts";
 import { useDebouncedAutosave } from "@/components/useDebouncedAutosave";
+import { AutosaveStatus } from "@/components/AutosaveStatus";
 
 let nextRowKey = 0;
 
@@ -49,7 +50,7 @@ export function ContactsTable({
     })),
   );
 
-  const { formRef, scheduleSave, statusLabel } = useDebouncedAutosave(
+  const { formRef, scheduleSave, statusLabel, error } = useDebouncedAutosave(
     saveContactsAction,
   );
 
@@ -271,9 +272,7 @@ export function ContactsTable({
         >
           + Add contact
         </button>
-        <span className="text-sm text-brand-ink/75">
-          {statusLabel}
-        </span>
+        <AutosaveStatus label={statusLabel} error={error} />
       </div>
     </form>
   );
