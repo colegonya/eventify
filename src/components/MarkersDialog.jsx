@@ -20,7 +20,7 @@ function MarkersEditor({ semesterId, markers, onClose }) {
     sortMarkers(markers).map((m) => ({ key: `existing-${m.id}`, ...m })),
   );
 
-  const { formRef, scheduleSave, statusLabel, error } = useDebouncedAutosave(saveMarkersAction);
+  const { formRef, scheduleSave, status } = useDebouncedAutosave(saveMarkersAction);
 
   const addRow = () =>
     setRows((rs) => [
@@ -103,7 +103,7 @@ function MarkersEditor({ semesterId, markers, onClose }) {
         >
           + Add marker
         </button>
-        <AutosaveStatus label={statusLabel} error={error} />
+        <AutosaveStatus {...status} />
       </div>
     </form>
   );

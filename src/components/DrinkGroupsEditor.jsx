@@ -11,7 +11,7 @@ export function DrinkGroupsEditor({ groups }) {
   const [rows, setRows] = useState(groups);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
-  const { formRef, scheduleSave, statusLabel, error } = useDebouncedAutosave(
+  const { formRef, scheduleSave, status } = useDebouncedAutosave(
     saveDrinkGroupsAction,
     { onSaved: () => router.refresh() },
   );
@@ -169,7 +169,7 @@ export function DrinkGroupsEditor({ groups }) {
           >
             + Add group
           </button>
-          <AutosaveStatus label={statusLabel} error={error} />
+          <AutosaveStatus {...status} />
         </div>
       </form>
     </div>

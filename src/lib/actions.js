@@ -32,7 +32,8 @@ import {
   dismissOnboardingChecklist,
   getEditorSupportingData,
 } from "@/lib/data";
-import { parseISODate, formatISODate, addDays, daysBetween, isValidTimeZone } from "@/lib/dates";
+import { daysBetween, isValidTimeZone } from "@/lib/dates";
+import { shiftEvent } from "@/lib/calendarEvents";
 import {
   AUTH_COOKIE_NAME,
   AUTH_COOKIE_OPTIONS,
@@ -173,14 +174,7 @@ export async function moveEventAction(
   const event = events.find((e) => e.id === eventId);
   if (!event) return fail("That event no longer exists. Reload the page.");
 
-  const deltaDays = daysBetween(fromDate, toDate);
-  const shift = (iso) => formatISODate(addDays(parseISODate(iso), deltaDays));
-
-  await saveEvent({
-    ...event,
-    startDate: shift(event.startDate),
-    endDate: shift(event.endDate),
-  });
+  await saveEvent(shiftEvent(event, daysBetween(fromDate, toDate)));
   revalidatePath("/calendar");
   revalidatePath("/budget");
   return ok();

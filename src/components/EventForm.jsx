@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
 import { saveEventAction, deleteEventAction } from "@/lib/actions";
 import {
   centsToDisplay,
@@ -15,6 +16,13 @@ import { DrinkCalculator } from "@/components/DrinkCalculator";
 
 let nextLineItemKey = 0;
 
+// Everything the form would submit, as one string, so "has anything changed"
+// is a comparison against the copy taken when the form opened. That covers
+// every field, line items and drink rows included, without each one having
+// to report its own edits.
+const snapshot = (form) =>
+  JSON.stringify(Array.from(new FormData(form), ([name, value]) => [name, String(value)]));
+
 export function EventForm({
   semesterId,
   chapterName,
@@ -27,6 +35,10 @@ export function EventForm({
   drinkPresets,
   drinkItemGroups,
   onClose,
+  // Close unless there are edits, in which case ask first. Escape and a
+  // click outside go through this too, via setCloseGuard.
+  onRequestClose = onClose,
+  setCloseGuard,
 }) {
   const [isPending, startTransition] = useTransition();
   const [lineItems, setLineItems] = useState(() =>
@@ -38,6 +50,27 @@ export function EventForm({
   );
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [formError, setFormError] = useState(null);
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+  const formRef = useRef(null);
+  const openedAs = useRef(null);
+  const keepEditingRef = useRef(null);
+
+  useEffect(() => {
+    openedAs.current = snapshot(formRef.current);
+    const guard = () => {
+      if (!formRef.current || snapshot(formRef.current) === openedAs.current) return false;
+      setConfirmingDiscard(true);
+      return true;
+    };
+    setCloseGuard?.(guard);
+    return () => setCloseGuard?.(null);
+  }, [setCloseGuard]);
+
+  // Focus lands on the safe choice, which also scrolls the question into view
+  // on a long form.
+  useEffect(() => {
+    if (confirmingDiscard) keepEditingRef.current?.focus();
+  }, [confirmingDiscard]);
 
   const [categoryId, setCategoryId] = useState(
     event?.category ?? categories[0]?.id ?? "",
@@ -83,6 +116,7 @@ export function EventForm({
 
   return (
     <form
+      ref={formRef}
       onSubmit={(e) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
@@ -152,12 +186,38 @@ export function EventForm({
         </h2>
         <button
           type="button"
-          onClick={onClose}
+          onClick={onRequestClose}
           className="text-sm text-brand-ink/75 transition-colors hover:text-brand-primary hover:underline"
         >
           Close ✕
         </button>
       </div>
+
+      {confirmingDiscard && (
+        <div
+          role="alert"
+          className="-mt-1 flex flex-wrap items-center justify-between gap-3 rounded-sm border border-amber-300 bg-amber-50 px-3 py-2"
+        >
+          <span className="text-sm font-medium text-brand-ink">Discard your changes?</span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-sm px-3 py-1.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
+            >
+              Discard
+            </button>
+            <button
+              ref={keepEditingRef}
+              type="button"
+              onClick={() => setConfirmingDiscard(false)}
+              className="rounded-sm border border-brand-ink/20 bg-background px-3 py-1.5 text-sm text-brand-ink transition-colors hover:bg-brand-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+            >
+              Keep editing
+            </button>
+          </div>
+        </div>
+      )}
 
       <label className={label}>
         Name
@@ -488,7 +548,10 @@ export function EventForm({
                 startTransition(async () => {
                   try {
                     const result = await deleteEventAction(semesterId, event.id);
-                    if (result?.ok) onClose();
+                    if (result?.ok) {
+                      onClose();
+                      toast.success(`Deleted "${event.name}"`);
+                    }
                     else setFormError(result?.error ?? "The event wasn't deleted. Try again.");
                   } catch {
                     setFormError("The event wasn't deleted. Check your connection and try again.");

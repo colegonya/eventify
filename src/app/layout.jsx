@@ -1,4 +1,5 @@
 import { Geist, Geist_Mono } from "next/font/google";
+import { Toaster } from "sonner";
 import { NavTabs } from "@/components/NavTabs";
 import { BRAND_COLOR_VARS, DEFAULT_BRAND_PRIMARY_HEX } from "@/lib/config";
 import { getBrandingSettings } from "@/lib/data";
@@ -58,6 +59,9 @@ export default async function RootLayout({
           <NavTabs />
         </header>
         <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
+        {/* Only for failures and for background actions with nowhere else
+            to report, like a drag-to-move. Routine "Saved" stays inline. */}
+        <Toaster position="bottom-center" richColors closeButton />
       </body>
     </html>
   );
