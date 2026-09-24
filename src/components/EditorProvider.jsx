@@ -6,15 +6,19 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useOptimistic,
   useRef,
   useState,
   useTransition,
 } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import { computeSemesterBudget } from "@/lib/budget";
 import { buildCalendarHref } from "@/lib/calendarUrl";
-import { getEditorSupportingDataAction } from "@/lib/actions";
+import { shiftEvent } from "@/lib/calendarEvents";
+import { daysBetween } from "@/lib/dates";
+import { getEditorSupportingDataAction, moveEventAction } from "@/lib/actions";
 import { useModalDialog } from "@/components/useModalDialog";
 
 function EventFormSkeleton() {
@@ -39,6 +43,36 @@ const EventForm = dynamic(
   () => import("@/components/EventForm").then((mod) => mod.EventForm),
   { loading: EventFormSkeleton },
 );
+
+function EditorLoadError({ onRetry, onClose }) {
+  return (
+    <div
+      role="alert"
+      className="mx-auto flex max-w-2xl flex-col items-center gap-3 rounded-lg border border-paper-line bg-background p-7 text-center shadow-[var(--shadow-overlay)]"
+    >
+      <h2 id="event-editor-title" className="text-base font-semibold text-brand-ink">
+        Couldn&apos;t load the editor
+      </h2>
+      <p className="max-w-sm text-sm text-brand-ink/75">Check your connection, then try again.</p>
+      <div className="mt-1 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onRetry}
+          className="rounded-sm bg-brand-primary px-4 py-2 text-sm font-semibold text-brand-primary-ink transition-all duration-150 hover:brightness-110 active:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
+        >
+          Try again
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-sm border border-brand-ink/20 px-4 py-2 text-sm text-brand-ink transition-colors hover:bg-brand-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
 
 const EditorContext = createContext(null);
 
@@ -113,7 +147,19 @@ export function EditorProvider({
     : null;
   const open = eventId ? editingEvent !== null : isNew;
 
-  const dialogRef = useModalDialog(open, close);
+  // The open form can hold the dialog open to ask before throwing away an
+  // edit. It registers a function that returns true when it did that.
+  // Saving and deleting call `close` directly, since nothing is lost there.
+  const closeGuard = useRef(null);
+  const setCloseGuard = useCallback((guard) => {
+    closeGuard.current = guard;
+  }, []);
+  const requestClose = useCallback(() => {
+    if (closeGuard.current?.()) return;
+    close();
+  }, [close]);
+
+  const dialogRef = useModalDialog(open, requestClose);
 
   // Drink presets/groups, categorySpendStats, and equipmentExpectedCents —
   // only consumed inside the dialog below — are fetched on demand when it
@@ -125,6 +171,9 @@ export function EditorProvider({
   // mount, and wouldn't pick up the real groups if it mounted early on an
   // empty placeholder.
   const [editorData, setEditorData] = useState(initialEditorData);
+  const [loadFailed, setLoadFailed] = useState(false);
+  // Bumped by "Try again" to run the fetch below once more.
+  const [loadAttempt, setLoadAttempt] = useState(0);
   // A deep-linked page load lands here with `open` already true on the very
   // first render, and initialEditorData already holding what the server
   // fetched for it — skip that one fetch so hydration doesn't blank the
@@ -146,13 +195,56 @@ export function EditorProvider({
     import("@/components/EventForm");
     startTransition(async () => {
       setEditorData(null);
-      const data = await getEditorSupportingDataAction(semesterId);
-      if (!cancelled) setEditorData(data);
+      setLoadFailed(false);
+      try {
+        const data = await getEditorSupportingDataAction(semesterId);
+        if (!cancelled) setEditorData(data);
+      } catch {
+        // Without this the skeleton would stay up forever.
+        if (!cancelled) setLoadFailed(true);
+      }
     });
     return () => {
       cancelled = true;
     };
-  }, [open, semesterId]);
+  }, [open, semesterId, loadAttempt]);
+
+  // Drag-to-move shows the event on its new day as soon as it's dropped.
+  // The optimistic copy lasts until the move's transition ends: by then the
+  // server has sent the calendar with the event really moved, or refused,
+  // and the event is back where it was.
+  const [, startMoveTransition] = useTransition();
+  const [pendingMoves, addPendingMove] = useOptimistic([], (moves, move) => [...moves, move]);
+  const movedEvents = useMemo(() => {
+    const moved = new Map();
+    for (const { eventId, deltaDays } of pendingMoves) {
+      const event = moved.get(eventId) ?? events.find((e) => e.id === eventId);
+      if (event) moved.set(eventId, shiftEvent(event, deltaDays));
+    }
+    return moved;
+  }, [pendingMoves, events]);
+
+  const moveEvent = useCallback(
+    (eventId, fromIso, toIso) => {
+      startMoveTransition(async () => {
+        addPendingMove({ eventId, deltaDays: daysBetween(fromIso, toIso) });
+        let result = null;
+        try {
+          result = await moveEventAction(semesterId, eventId, fromIso, toIso);
+        } catch {
+          // Reported below, same as a refusal.
+        }
+        if (!result?.ok) {
+          toast.error(
+            result?.error
+              ? `Couldn't move the event. ${result.error}`
+              : "Couldn't move the event. Check your connection and try again.",
+          );
+        }
+      });
+    },
+    [semesterId, addPendingMove],
+  );
 
   // Budget for the form's live headroom preview, excluding the event being
   // edited so its own spend isn't double-counted.
@@ -165,8 +257,8 @@ export function EditorProvider({
   }, [events, categoriesById, editingEvent, editorData]);
 
   const value = useMemo(
-    () => ({ openEvent, openNew, close }),
-    [openEvent, openNew, close],
+    () => ({ openEvent, openNew, close, moveEvent, movedEvents }),
+    [openEvent, openNew, close, moveEvent, movedEvents],
   );
 
   return (
@@ -176,7 +268,7 @@ export function EditorProvider({
         <div
           className="animate-scrim-in fixed inset-0 z-50 overflow-y-auto bg-brand-ink/40 p-4 backdrop-blur-sm"
           onMouseDown={(e) => {
-            if (e.target === e.currentTarget) close();
+            if (e.target === e.currentTarget) requestClose();
           }}
         >
           <div
@@ -201,7 +293,11 @@ export function EditorProvider({
                 drinkPresets={editorData.drinkPresets}
                 drinkItemGroups={editorData.drinkItemGroups}
                 onClose={close}
+                onRequestClose={requestClose}
+                setCloseGuard={setCloseGuard}
               />
+            ) : loadFailed ? (
+              <EditorLoadError onRetry={() => setLoadAttempt((n) => n + 1)} onClose={close} />
             ) : (
               <EventFormSkeleton />
             )}

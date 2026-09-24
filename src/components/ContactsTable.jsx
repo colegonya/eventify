@@ -50,7 +50,7 @@ export function ContactsTable({
     })),
   );
 
-  const { formRef, scheduleSave, statusLabel, error } = useDebouncedAutosave(
+  const { formRef, scheduleSave, status } = useDebouncedAutosave(
     saveContactsAction,
   );
 
@@ -272,7 +272,7 @@ export function ContactsTable({
         >
           + Add contact
         </button>
-        <AutosaveStatus label={statusLabel} error={error} />
+        <AutosaveStatus {...status} />
       </div>
     </form>
   );

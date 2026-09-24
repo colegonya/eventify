@@ -59,6 +59,7 @@ How the suite is laid out:
 - `first-run.setup.mjs` runs first: a wrong passcode, the right one, and first-run setup with example data. It saves the login for every other test.
 - Tests run one at a time against one database. Each creates its own uniquely named data rather than relying on another test's.
 - `desktop` runs at 1440×900 and `phone` at 375×812, both in Chromium.
+- `reliable-saves.spec.mjs` simulates a dropped connection by aborting server-action requests (POSTs with a `Next-Action` header) through `page.route`, so page loads keep working while saves fail.
 - `accessibility.spec.mjs` runs axe on every page and attaches the results to the report. It is report-only for now and will become a hard failure once the known contrast issues are fixed.
 - In CI, the `e2e` job runs alongside `check` and uploads the HTML report as the `playwright-report` artifact. Open it to see failure screenshots, traces, and axe results.
 

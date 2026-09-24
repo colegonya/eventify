@@ -10,7 +10,7 @@ let nextRowKey = 0;
 export function CategoriesEditor({ categories }) {
   const [rows, setRows] = useState(() => categories.map((c) => ({ key: `existing-${c.id}`, ...c })));
 
-  const { formRef, scheduleSave, statusLabel, error } = useDebouncedAutosave(
+  const { formRef, scheduleSave, status } = useDebouncedAutosave(
     saveCategoriesAction,
   );
 
@@ -134,7 +134,7 @@ export function CategoriesEditor({ categories }) {
         >
           + Add category
         </button>
-        <AutosaveStatus label={statusLabel} error={error} />
+        <AutosaveStatus {...status} />
       </div>
     </form>
   );

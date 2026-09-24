@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { EventChip } from "@/components/EventChip";
 import { useEditor } from "@/components/EditorProvider";
-import { moveEventAction } from "@/lib/actions";
+import { compareByStartTime } from "@/lib/calendarEvents";
 import { worstSeverity } from "@/lib/conflicts";
 
 const DRAG_MIME = "application/x-calendar-event";
@@ -16,13 +16,22 @@ export function DayCell({
   categoriesById,
   dimmed,
   isToday,
-  semesterId,
   conflicts,
 }) {
-  const { openEvent, openNew } = useEditor();
+  const { openEvent, openNew, moveEvent, movedEvents } = useEditor();
   const [dragOver, setDragOver] = useState(false);
   const [draggingId, setDraggingId] = useState(null);
-  const [, startTransition] = useTransition();
+
+  // An event dropped a moment ago shows on its new days while the server
+  // saves the move. See moveEvent in EditorProvider.
+  let shownEvents = events;
+  if (movedEvents.size > 0) {
+    shownEvents = events.filter((e) => !movedEvents.has(e.id));
+    for (const moved of movedEvents.values()) {
+      if (moved.startDate <= iso && iso <= moved.endDate) shownEvents.push(moved);
+    }
+    shownEvents.sort(compareByStartTime);
+  }
 
   return (
     <div
@@ -45,7 +54,7 @@ export function DayCell({
         setDragOver(false);
         const { eventId, fromIso } = JSON.parse(raw);
         if (fromIso === iso) return;
-        startTransition(() => moveEventAction(semesterId, eventId, fromIso, iso));
+        moveEvent(eventId, fromIso, iso);
       }}
       className={`group flex min-h-0 flex-col overflow-hidden p-1 transition-[background-color,box-shadow] ${
         dragOver
@@ -87,7 +96,7 @@ export function DayCell({
             {marker.label}
           </div>
         ))}
-        {events.map((event) => (
+        {shownEvents.map((event) => (
           <div
             key={event.id}
             draggable

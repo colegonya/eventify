@@ -11,7 +11,7 @@ export function DrinkPresetsEditor({
   categories,
 }) {
 
-  const { formRef, scheduleSave, statusLabel, error } = useDebouncedAutosave(
+  const { formRef, scheduleSave, status } = useDebouncedAutosave(
     saveDrinkPresetsAction,
   );
 
@@ -112,7 +112,7 @@ export function DrinkPresetsEditor({
       )}
 
       <div className="flex items-center justify-end gap-3">
-        <AutosaveStatus label={statusLabel} error={error} />
+        <AutosaveStatus {...status} />
       </div>
     </form>
   );

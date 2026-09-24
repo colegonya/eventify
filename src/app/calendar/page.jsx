@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getCalendarGridData, getBrandingSettings, isOnboardingChecklistDismissed } from "@/lib/data";
 import { requireSemesters } from "@/lib/setup";
 import { computeConflicts } from "@/lib/conflicts";
+import { compareByStartTime } from "@/lib/calendarEvents";
 import {
   getMonthGridDates,
   getWeekGridDates,
@@ -95,15 +96,7 @@ export default async function CalendarPage({
       eventsByDate.set(date, list);
     }
   }
-  // Chronological within a day; day-only events (no start time) sort last.
-  for (const list of eventsByDate.values()) {
-    list.sort((a, b) => {
-      if (a.startTime === null && b.startTime === null) return 0;
-      if (a.startTime === null) return 1;
-      if (b.startTime === null) return -1;
-      return a.startTime.localeCompare(b.startTime);
-    });
-  }
+  for (const list of eventsByDate.values()) list.sort(compareByStartTime);
   const markersByDate = new Map();
   for (const marker of markers) {
     const list = markersByDate.get(marker.date) ?? [];
@@ -301,7 +294,6 @@ export default async function CalendarPage({
               categoriesById={categoriesById}
               dimmed={view === "month" && !isSameMonth(date, month)}
               isToday={isToday(date, todayIso)}
-              semesterId={semester.id}
               conflicts={conflicts}
             />
           );
