@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { ensureDefaults, getBrandingSettings } from "@/lib/data";
 import { completeSetupAction } from "@/lib/actions";
 import { Masthead } from "@/components/Masthead";
+import { BrowserTimeZoneInput } from "@/components/BrowserTimeZoneInput";
 
 const fieldClass =
   "rounded-sm border border-brand-ink/20 bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15";
@@ -47,6 +48,7 @@ export default async function SetupPage({ searchParams }) {
       )}
 
       <form action={completeSetupAction} className="flex flex-col gap-4">
+        <BrowserTimeZoneInput />
         <label className={labelClass}>
           {words.org} name
           <input

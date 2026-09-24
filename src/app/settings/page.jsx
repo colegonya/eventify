@@ -27,6 +27,18 @@ const FALLBACK_SWATCHES = {
   ink: "#1c1c1a",
 };
 
+// Shown first in the picker. Everything else follows alphabetically.
+const COMMON_TIME_ZONES = [
+  ["America/Los_Angeles", "Pacific (Los Angeles)"],
+  ["America/Denver", "Mountain (Denver)"],
+  ["America/Phoenix", "Arizona (Phoenix)"],
+  ["America/Chicago", "Central (Chicago)"],
+  ["America/New_York", "Eastern (New York)"],
+  ["America/Anchorage", "Alaska (Anchorage)"],
+  ["Pacific/Honolulu", "Hawaii (Honolulu)"],
+  ["UTC", "UTC"],
+];
+
 const errorMessages = (words) => ({
   name: `Give the ${words.periodLower} a name.`,
   dates: `A ${words.periodLower} needs both a start and an end date.`,
@@ -39,13 +51,19 @@ const errorMessages = (words) => ({
   budget: `Enter a budget for the ${words.periodLower}, even a rough one.`,
   nameLength: `Keep ${words.periodLower} names to 60 characters or fewer.`,
   length: "That name is too long. Keep names to 60 characters and words to 30.",
+  timeZone: "Pick a time zone from the list.",
 });
 
 export default async function SettingsPage({ searchParams }) {
   const params = await searchParams;
   const savedPasscode = params?.saved === "passcode";
   const semesters = await requireSemesters();
-  const { chapterName, colors, appTitle, appTitleOverride, words } = await getBrandingSettings();
+  const { chapterName, colors, appTitle, appTitleOverride, words, timeZone } = await getBrandingSettings();
+  // The saved zone always appears, even an alias the runtime doesn't list,
+  // so saving the form never silently switches it to the first option.
+  const otherTimeZones = [...new Set([timeZone, ...Intl.supportedValuesOf("timeZone")])]
+    .filter((zone) => !COMMON_TIME_ZONES.some(([z]) => z === zone))
+    .sort();
   const errorMessage = errorMessages(words)[params?.error];
   const sorted = [...semesters].sort((a, b) => a.startDate.localeCompare(b.startDate));
 
@@ -123,6 +141,29 @@ export default async function SettingsPage({ searchParams }) {
           <span className="-mt-2 text-xs text-brand-ink/60">
             Leave any of these blank to use the default. They change wording
             across the app, not your data.
+          </span>
+
+          <label className={`${labelClass} w-72`}>
+            Time zone
+            <select name="timeZone" defaultValue={timeZone} className={fieldClass}>
+              <optgroup label="Common">
+                {COMMON_TIME_ZONES.map(([zone, name]) => (
+                  <option key={zone} value={zone}>
+                    {name}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="All time zones">
+                {otherTimeZones.map((zone) => (
+                  <option key={zone} value={zone}>
+                    {zone.replaceAll("_", " ")}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+          </label>
+          <span className="-mt-2 text-xs text-brand-ink/60">
+            Decides when &ldquo;today&rdquo; starts on the calendar and contacts.
           </span>
 
           <div className="flex flex-col gap-2">

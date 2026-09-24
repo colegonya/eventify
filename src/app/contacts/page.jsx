@@ -1,5 +1,5 @@
 import { getContacts, getBrandingSettings } from "@/lib/data";
-import { formatISODate } from "@/lib/dates";
+import { todayInTimeZone } from "@/lib/dates";
 import { requireSemesters } from "@/lib/setup";
 import { SemesterSwitcher } from "@/components/SemesterSwitcher";
 import { Masthead } from "@/components/Masthead";
@@ -21,7 +21,7 @@ export default async function ContactsPage({
 
   const semester =
     semesters.find((s) => s.id === params.semester) ?? semesters[0];
-  const [contacts, { words }] = await Promise.all([
+  const [contacts, { words, timeZone }] = await Promise.all([
     getContacts(semester.id),
     getBrandingSettings(),
   ]);
@@ -42,7 +42,7 @@ export default async function ContactsPage({
         key={semester.id}
         semesterId={semester.id}
         contacts={contacts}
-        todayISO={formatISODate(new Date())}
+        todayISO={todayInTimeZone(timeZone)}
       />
     </div>
   );

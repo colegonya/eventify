@@ -27,7 +27,8 @@ export default defineConfig({
     {
       name: "setup",
       testMatch: /first-run\.setup\.mjs/,
-      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
+      // Setup records the browser's time zone as the organization's, so pin it.
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 }, timezoneId: "America/Los_Angeles" },
     },
     {
       name: "desktop",

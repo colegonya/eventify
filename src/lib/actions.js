@@ -32,7 +32,7 @@ import {
   dismissOnboardingChecklist,
   getEditorSupportingData,
 } from "@/lib/data";
-import { parseISODate, formatISODate, addDays, daysBetween } from "@/lib/dates";
+import { parseISODate, formatISODate, addDays, daysBetween, isValidTimeZone } from "@/lib/dates";
 import {
   AUTH_COOKIE_NAME,
   AUTH_COOKIE_OPTIONS,
@@ -47,7 +47,7 @@ import { parseEventForm } from "@/lib/forms/event";
 import { parseEquipmentForm } from "@/lib/forms/equipment";
 import { parseCategoriesForm, parseContactsForm, parseMarkersForm } from "@/lib/forms/lists";
 import { parseDrinkGroupsForm, parseDrinkPresetsForm, parseNewDrinkItem } from "@/lib/forms/drinks";
-import { BRAND_COLOR_VARS } from "@/lib/config";
+import { BRAND_COLOR_VARS, DEFAULT_TIME_ZONE } from "@/lib/config";
 import { isHexColor } from "@/lib/color";
 import { computeCategorySpendStats, computeEquipmentContribution } from "@/lib/budget";
 import { equipmentItemsForSemester } from "@/lib/equipment";
@@ -322,8 +322,11 @@ export async function saveBrandingAction(formData) {
     redirect("/settings?error=length");
   }
 
+  const timeZone = String(formData.get("timeZone") ?? "").trim();
+  if (!isValidTimeZone(timeZone)) redirect("/settings?error=timeZone");
+
   const { chapterName: previousName } = await getBrandingSettings();
-  await saveBrandingSettings({ chapterName, colors, orgNoun, periodNoun, appTitle: title });
+  await saveBrandingSettings({ chapterName, colors, orgNoun, periodNoun, appTitle: title, timeZone });
   await renameChapterInEventHosts(previousName, chapterName);
 
   revalidatePath("/", "layout");
@@ -354,7 +357,11 @@ export async function completeSetupAction(formData) {
   // had deliberately chosen it on the Settings page, permanently shadowing
   // any later change to that env var. Blank defers to the env default until
   // the chapter actually saves a color themselves.
-  await saveBrandingSettings({ chapterName, colors: {} });
+  // The officer's browser supplies this; anything unusable falls back to the
+  // default and can be changed in Settings.
+  const browserTimeZone = String(formData.get("timeZone") ?? "").trim();
+  const timeZone = isValidTimeZone(browserTimeZone) ? browserTimeZone : DEFAULT_TIME_ZONE;
+  await saveBrandingSettings({ chapterName, colors: {}, timeZone });
 
   const semester = { id: semesterIdFromLabel(fields.label, new Set()), ...fields };
   await saveSemester(semester);
