@@ -9,3 +9,9 @@ test("the calendar and budget load at phone size", async ({ page }) => {
   await expect(page).toHaveURL(/\/budget/);
   await expect(page.getByText(/Expected Spend/i).first()).toBeVisible();
 });
+
+test("on a phone, Today brings today's column into view", async ({ page }) => {
+  await page.goto("/calendar?month=2027-03");
+  await page.getByRole("link", { name: "Today" }).click();
+  await expect(page.locator("[data-today]")).toBeInViewport();
+});
