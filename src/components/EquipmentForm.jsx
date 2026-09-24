@@ -23,6 +23,7 @@ export function EquipmentForm({
     })),
   );
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [formError, setFormError] = useState(null);
   const [expectedCostInput, setExpectedCostInput] = useState(
     centsToDollarsInput(item?.expectedCostCents ?? null),
   );
@@ -44,9 +45,15 @@ export function EquipmentForm({
       onSubmit={(e) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
+        setFormError(null);
         startTransition(async () => {
-          await saveEquipmentAction(formData);
-          onClose();
+          try {
+            const result = await saveEquipmentAction(formData);
+            if (result?.ok) onClose();
+            else setFormError(result?.error ?? "The item wasn't saved. Try again.");
+          } catch {
+            setFormError("The item wasn't saved. Check your connection and try again.");
+          }
         });
       }}
       className="mx-auto flex max-w-2xl flex-col gap-5 rounded-lg border border-paper-line bg-background p-5 shadow-[var(--shadow-overlay)] md:p-7"
@@ -194,6 +201,12 @@ export function EquipmentForm({
         <textarea name="notes" rows={3} defaultValue={item?.notes} className={input} />
       </label>
 
+      {formError && (
+        <p role="alert" className="-mb-2 text-sm font-medium text-red-700">
+          {formError}
+        </p>
+      )}
+
       <div className="flex items-center justify-between border-t border-paper-line pt-5">
         <button
           type="submit"
@@ -221,8 +234,13 @@ export function EquipmentForm({
               disabled={isPending}
               onClick={() =>
                 startTransition(async () => {
-                  await deleteEquipmentAction(item.id);
-                  onClose();
+                  try {
+                    const result = await deleteEquipmentAction(item.id);
+                    if (result?.ok) onClose();
+                    else setFormError(result?.error ?? "The item wasn't deleted. Try again.");
+                  } catch {
+                    setFormError("The item wasn't deleted. Check your connection and try again.");
+                  }
                 })
               }
               className="rounded-sm bg-red-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:opacity-60"

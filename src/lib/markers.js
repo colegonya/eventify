@@ -25,26 +25,6 @@ export function normalizeMarkers(rawList) {
   return (rawList ?? []).map(normalizeMarker).filter((m) => m.date && m.label);
 }
 
-/**
- * Pulls the editor's parallel row arrays back into records, dropping rows with
- * nothing in them. A half-filled row is how an officer leaves the "add" row
- * they opened and didn't use — discarding it silently beats an error.
- */
-export function parseMarkers(formData, semesterId) {
-  const ids = formData.getAll("markerId");
-  const dates = formData.getAll("markerDate");
-  const labels = formData.getAll("markerLabel");
-
-  const markers = [];
-  for (let i = 0; i < ids.length; i++) {
-    const date = clean(dates[i]);
-    const label = clean(labels[i]);
-    if (!date || !label) continue;
-    markers.push({ id: String(ids[i]), semesterId, date, label });
-  }
-  return markers;
-}
-
 /** Chronological, for the editor's initial order. */
 export function sortMarkers(markers) {
   return [...markers].sort((a, b) => a.date.localeCompare(b.date));

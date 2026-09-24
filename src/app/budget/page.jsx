@@ -154,6 +154,14 @@ export default async function BudgetPage({
       otherSpendExpectedCents={otherSpendExpectedCents}
     >
     <div className="flex flex-col gap-6 p-4 md:p-6">
+      {params.error === "budget" && (
+        <p
+          role="alert"
+          className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800"
+        >
+          The budget wasn&apos;t saved. Enter a dollar amount from $0 to $1,000,000, even a rough one.
+        </p>
+      )}
       <div className="flex flex-wrap items-end justify-between gap-3 pb-1">
         <div className="flex flex-wrap items-center gap-3">
           <Masthead as="h2">{semester.label}</Masthead>
@@ -171,8 +179,9 @@ export default async function BudgetPage({
           className="flex items-center gap-2 rounded-sm border border-brand-ink/20 px-3 py-1.5 text-sm"
         >
           <input type="hidden" name="semesterId" value={semester.id} />
-          <label className="text-brand-ink/75">Max budget ($)</label>
+          <label htmlFor="max-budget" className="text-brand-ink/75">Max budget ($)</label>
           <input
+            id="max-budget"
             type="number"
             step="0.01"
             min="0"

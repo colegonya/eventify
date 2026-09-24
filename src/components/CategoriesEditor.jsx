@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { saveCategoriesAction } from "@/lib/actions";
 import { useDebouncedAutosave } from "@/components/useDebouncedAutosave";
+import { AutosaveStatus } from "@/components/AutosaveStatus";
 
 let nextRowKey = 0;
 
 export function CategoriesEditor({ categories }) {
   const [rows, setRows] = useState(() => categories.map((c) => ({ key: `existing-${c.id}`, ...c })));
 
-  const { formRef, scheduleSave, statusLabel } = useDebouncedAutosave(
+  const { formRef, scheduleSave, statusLabel, error } = useDebouncedAutosave(
     saveCategoriesAction,
   );
 
@@ -133,9 +134,7 @@ export function CategoriesEditor({ categories }) {
         >
           + Add category
         </button>
-        <span className="text-sm text-brand-ink/75">
-          {statusLabel}
-        </span>
+        <AutosaveStatus label={statusLabel} error={error} />
       </div>
     </form>
   );

@@ -4,13 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveDrinkGroupsAction } from "@/lib/actions";
 import { useDebouncedAutosave } from "@/components/useDebouncedAutosave";
+import { AutosaveStatus } from "@/components/AutosaveStatus";
 
 export function DrinkGroupsEditor({ groups }) {
   const router = useRouter();
   const [rows, setRows] = useState(groups);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
-  const { formRef, scheduleSave, statusLabel } = useDebouncedAutosave(
+  const { formRef, scheduleSave, statusLabel, error } = useDebouncedAutosave(
     saveDrinkGroupsAction,
     { onSaved: () => router.refresh() },
   );
@@ -168,9 +169,7 @@ export function DrinkGroupsEditor({ groups }) {
           >
             + Add group
           </button>
-          <span className="text-sm text-brand-ink/75">
-            {statusLabel}
-          </span>
+          <AutosaveStatus label={statusLabel} error={error} />
         </div>
       </form>
     </div>

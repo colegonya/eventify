@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { saveDrinkPresetsAction } from "@/lib/actions";
 import { useDebouncedAutosave } from "@/components/useDebouncedAutosave";
+import { AutosaveStatus } from "@/components/AutosaveStatus";
 
 export function DrinkPresetsEditor({
   presets,
@@ -10,7 +11,7 @@ export function DrinkPresetsEditor({
   categories,
 }) {
 
-  const { formRef, scheduleSave, statusLabel } = useDebouncedAutosave(
+  const { formRef, scheduleSave, statusLabel, error } = useDebouncedAutosave(
     saveDrinkPresetsAction,
   );
 
@@ -111,9 +112,7 @@ export function DrinkPresetsEditor({
       )}
 
       <div className="flex items-center justify-end gap-3">
-        <span className="text-sm text-brand-ink/75">
-          {statusLabel}
-        </span>
+        <AutosaveStatus label={statusLabel} error={error} />
       </div>
     </form>
   );

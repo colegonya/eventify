@@ -66,7 +66,18 @@ export function DrinkCalculator({
     formData.set("itemGroupId", newItemGroupId);
 
     startTransition(async () => {
-      await addDrinkItemAction(formData);
+      let result;
+      try {
+        result = await addDrinkItemAction(formData);
+      } catch {
+        setAddItemError("The item wasn't added. Check your connection and try again.");
+        return;
+      }
+      // Only show the row once the catalog actually has it.
+      if (!result?.ok) {
+        setAddItemError(result?.error ?? "The item wasn't added. Try again.");
+        return;
+      }
       setRows((rs) => [...rs, { id, name, price, qty: 0 }]);
       setNewItemName("");
       setNewItemPrice("");

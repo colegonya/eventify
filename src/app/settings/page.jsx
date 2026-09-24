@@ -36,6 +36,9 @@ const errorMessages = (words) => ({
   color: "Colors need to be six-digit hex codes, like #7b2132.",
   passcodeShort: `Use at least ${MIN_PASSCODE_LENGTH} characters.`,
   passcodeMismatch: "Those two passcodes don't match.",
+  budget: `Enter a budget for the ${words.periodLower}, even a rough one.`,
+  nameLength: `Keep ${words.periodLower} names to 60 characters or fewer.`,
+  length: "That name is too long. Keep names to 60 characters and words to 30.",
 });
 
 export default async function SettingsPage({ searchParams }) {

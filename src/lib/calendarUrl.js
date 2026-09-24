@@ -1,3 +1,5 @@
+import { isRealIsoDate, isRealYearMonth } from "@/lib/dates";
+
 export const CALENDAR_PARAM_KEYS = [
   "semester",
   "month",
@@ -40,4 +42,18 @@ export function buildCalendarHref(
 
   const query = next.toString();
   return query ? `/calendar?${query}` : "/calendar";
+}
+
+/**
+ * The calendar's view from its query params, with anything unusable replaced
+ * by the default. Links get truncated or mangled when they're pasted into
+ * group chats, and ?month=garbage used to render "undefined NaN" over an empty
+ * grid while ?week=garbage crashed the page. Next.js hands over an array for a
+ * repeated key, which counts as unusable too.
+ */
+export function readCalendarParams(params, defaultMonth) {
+  const view = params.view === "week" ? "week" : "month";
+  const month = isRealYearMonth(params.month) ? params.month : defaultMonth;
+  const week = isRealIsoDate(params.week) ? params.week : `${month}-01`;
+  return { view, month, week };
 }

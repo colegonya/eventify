@@ -16,7 +16,7 @@ import {
   addDays,
   eventDatesInRange,
 } from "@/lib/dates";
-import { buildCalendarHref } from "@/lib/calendarUrl";
+import { buildCalendarHref, readCalendarParams } from "@/lib/calendarUrl";
 import { getEditorSupportingDataAction } from "@/lib/actions";
 import { SemesterSwitcher } from "@/components/SemesterSwitcher";
 import { Legend, LegendDropdown } from "@/components/Legend";
@@ -48,7 +48,6 @@ export default async function CalendarPage({
 
   const semester =
     semesters.find((s) => s.id === params.semester) ?? semesters[0];
-  const semesterIds = semesters.map((s) => s.id);
 
   // Default landing month: once the semester is close (within a week of its
   // start), open to today's month; before then — e.g. checking over the
@@ -57,7 +56,7 @@ export default async function CalendarPage({
   const todayIso = formatISODate(today);
   const nearStartIso = formatISODate(addDays(parseISODate(semester.startDate), -7));
   const defaultMonth = todayIso >= nearStartIso ? todayIso.slice(0, 7) : semester.startDate.slice(0, 7);
-  const month = params.month ?? defaultMonth;
+  const { view, month, week: weekAnchor } = readCalendarParams(params, defaultMonth);
 
   // A Budget-page alert can deep-link here with the editor already open
   // (?event=X or ?new=1). When the URL suggests that, fetch the editor's
@@ -80,7 +79,7 @@ export default async function CalendarPage({
     getCalendarGridData(semester.id),
     getBrandingSettings(),
     isOnboardingChecklistDismissed().then((dismissed) => !dismissed),
-    mightOpenEditorOnLoad ? getEditorSupportingDataAction(semester.id, semesterIds) : Promise.resolve(null),
+    mightOpenEditorOnLoad ? getEditorSupportingDataAction(semester.id) : Promise.resolve(null),
   ]);
   const categoriesById = new Map(categories.map((c) => [c.id, c]));
 
@@ -110,8 +109,6 @@ export default async function CalendarPage({
     markersByDate.set(marker.date, list);
   }
 
-  const view = params.view === "week" ? "week" : "month";
-  const weekAnchor = params.week ?? `${month}-01`;
 
   const gridDates =
     view === "week" ? getWeekGridDates(weekAnchor) : getMonthGridDates(month);
@@ -185,7 +182,6 @@ export default async function CalendarPage({
       events={events}
       chapterName={chapterName}
       semesterId={semester.id}
-      semesterIds={semesterIds}
       maxBudgetCents={semester.maxBudgetCents}
       month={month}
       categories={categories}
