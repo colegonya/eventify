@@ -10,6 +10,8 @@ import {
 } from "@/lib/actions";
 import { MIN_PASSCODE_LENGTH } from "@/lib/auth";
 import { DeleteSemesterButton } from "@/components/DeleteSemesterButton";
+import { SubmitButton } from "@/components/SubmitButton";
+import { SavedNotice } from "@/components/SavedNotice";
 import { ColorField } from "@/components/ColorField";
 import { Masthead } from "@/components/Masthead";
 import { DEFAULT_ORG_NOUN, DEFAULT_PERIOD_NOUN } from "@/lib/vocabulary";
@@ -56,7 +58,6 @@ const errorMessages = (words) => ({
 
 export default async function SettingsPage({ searchParams }) {
   const params = await searchParams;
-  const savedPasscode = params?.saved === "passcode";
   const semesters = await requireSemesters();
   const { chapterName, colors, appTitle, appTitleOverride, words, timeZone } = await getBrandingSettings();
   // The saved zone always appears, even an alias the runtime doesn't list,
@@ -184,12 +185,17 @@ export default async function SettingsPage({ searchParams }) {
             </span>
           </div>
 
-          <button
-            type="submit"
-            className="self-start rounded-sm border border-brand-ink/20 px-3 py-1.5 text-sm text-brand-ink transition-colors hover:bg-brand-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
-          >
-            Save {words.orgLower} details
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <SubmitButton
+              pendingLabel="Saving…"
+              className="rounded-sm border border-brand-ink/20 px-3 py-1.5 text-sm text-brand-ink transition-colors hover:bg-brand-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+            >
+              Save {words.orgLower} details
+            </SubmitButton>
+            <SavedNotice key={params?.at} show={params?.saved === "organization"}>
+              Saved {words.orgLower} details
+            </SavedNotice>
+          </div>
         </form>
       </section>
 
@@ -201,6 +207,10 @@ export default async function SettingsPage({ searchParams }) {
             one every term and switch between them from the Calendar and Budget tabs.
           </p>
         </div>
+
+        <SavedNotice key={params?.at} show={params?.saved === "semesterDeleted"}>
+          {words.period} deleted
+        </SavedNotice>
 
         <div className="flex flex-col divide-y divide-paper-line overflow-hidden rounded-md border border-paper-line bg-background shadow-[var(--shadow-resting)]">
           {sorted.map((semester) => (
@@ -251,17 +261,20 @@ export default async function SettingsPage({ searchParams }) {
                 />
               </label>
               <div className="flex items-center gap-2">
-                <button
-                  type="submit"
-                  className="rounded-sm border border-brand-ink/20 px-3 py-1.5 text-sm text-brand-ink transition-colors hover:bg-brand-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
-                >
+                <SubmitButton pendingLabel="Saving…" className="rounded-sm border border-brand-ink/20 px-3 py-1.5 text-sm text-brand-ink transition-colors hover:bg-brand-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1">
                   Save
-                </button>
+                </SubmitButton>
                 <DeleteSemesterButton
                   label={semester.label}
                   action={deleteSemesterAction}
                   disabled={semesters.length <= 1}
                 />
+                <SavedNotice
+                  key={params?.at}
+                  show={params?.saved === "semester" && params?.id === semester.id}
+                >
+                  Saved {semester.label}
+                </SavedNotice>
               </div>
             </form>
           ))}
@@ -299,12 +312,12 @@ export default async function SettingsPage({ searchParams }) {
               className={`${fieldClass} w-28`}
             />
           </label>
-          <button
-            type="submit"
+          <SubmitButton
+            pendingLabel="Adding…"
             className="rounded-sm bg-brand-primary px-3 py-1.5 text-sm font-semibold text-brand-primary-ink transition-all duration-150 hover:brightness-110 active:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
           >
             Add {words.periodLower}
-          </button>
+          </SubmitButton>
         </form>
       </section>
 
@@ -318,15 +331,6 @@ export default async function SettingsPage({ searchParams }) {
             signed in here.
           </p>
         </div>
-
-        {savedPasscode && (
-          <p
-            role="status"
-            className="rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-800"
-          >
-            Passcode updated. Everyone else has been signed out.
-          </p>
-        )}
 
         <form
           action={updatePasscodeAction}
@@ -354,12 +358,12 @@ export default async function SettingsPage({ searchParams }) {
               className={fieldClass}
             />
           </label>
-          <button
-            type="submit"
-            className="rounded-sm border border-brand-ink/20 px-3 py-1.5 text-sm text-brand-ink transition-colors hover:bg-brand-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
-          >
+          <SubmitButton pendingLabel="Changing…" className="rounded-sm border border-brand-ink/20 px-3 py-1.5 text-sm text-brand-ink transition-colors hover:bg-brand-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1">
             Change passcode
-          </button>
+          </SubmitButton>
+          <SavedNotice key={params?.at} show={params?.saved === "passcode"}>
+            Passcode changed. Everyone else has been signed out.
+          </SavedNotice>
         </form>
       </section>
     </div>

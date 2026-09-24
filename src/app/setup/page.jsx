@@ -3,6 +3,7 @@ import { ensureDefaults, getBrandingSettings } from "@/lib/data";
 import { completeSetupAction } from "@/lib/actions";
 import { Masthead } from "@/components/Masthead";
 import { BrowserTimeZoneInput } from "@/components/BrowserTimeZoneInput";
+import { SubmitButton } from "@/components/SubmitButton";
 
 const fieldClass =
   "rounded-sm border border-brand-ink/20 bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15";
@@ -115,12 +116,12 @@ export default async function SetupPage({ searchParams }) {
           </span>
         </label>
 
-        <button
-          type="submit"
+        <SubmitButton
+          pendingLabel="Setting up…"
           className="rounded-sm bg-brand-primary px-4 py-2.5 text-sm font-semibold text-brand-primary-ink transition-all duration-150 hover:brightness-110 active:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
         >
           Create {words.periodLower}
-        </button>
+        </SubmitButton>
       </form>
     </div>
   );

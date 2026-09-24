@@ -19,6 +19,8 @@ import { EquipmentEditorProvider } from "@/components/EquipmentEditorProvider";
 import { AddEquipmentButton } from "@/components/AddEquipmentButton";
 import { EquipmentItemLink } from "@/components/EquipmentItemLink";
 import { updateMaxBudgetAction } from "@/lib/actions";
+import { SubmitButton } from "@/components/SubmitButton";
+import { SavedNotice } from "@/components/SavedNotice";
 import { EQUIPMENT_COLOR } from "@/lib/constants";
 
 export default async function BudgetPage({
@@ -189,12 +191,15 @@ export default async function BudgetPage({
             defaultValue={(semester.maxBudgetCents / 100).toFixed(2)}
             className="tabular-figures w-28 rounded-sm border border-brand-ink/20 px-2 py-1 outline-none transition-colors focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15"
           />
-          <button
-            type="submit"
+          <SubmitButton
+            pendingLabel="Saving…"
             className="rounded-sm border border-brand-ink/20 px-3 py-1 text-brand-ink transition-colors hover:bg-brand-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
           >
             Save
-          </button>
+          </SubmitButton>
+          <SavedNotice key={params.at} show={params.saved === "budget"} params={["saved", "at"]}>
+            Saved
+          </SavedNotice>
         </form>
       </div>
 
