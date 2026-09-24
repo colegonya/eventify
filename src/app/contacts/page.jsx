@@ -1,6 +1,7 @@
 import { getContacts, getBrandingSettings } from "@/lib/data";
 import { todayInTimeZone } from "@/lib/dates";
 import { requireSemesters } from "@/lib/setup";
+import { prefetchForSemester } from "@/lib/semesterPrefetch";
 import { SemesterSwitcher } from "@/components/SemesterSwitcher";
 import { Masthead } from "@/components/Masthead";
 import { ContactsTable } from "@/components/ContactsTable";
@@ -9,6 +10,7 @@ export default async function ContactsPage({
   searchParams,
 }) {
   const params = await searchParams;
+  const loadContacts = prefetchForSemester(params.semester, getContacts);
   const semesters = await requireSemesters();
 
   if (semesters.length === 0) {
@@ -22,7 +24,7 @@ export default async function ContactsPage({
   const semester =
     semesters.find((s) => s.id === params.semester) ?? semesters[0];
   const [contacts, { words, timeZone }] = await Promise.all([
-    getContacts(semester.id),
+    loadContacts(semester.id),
     getBrandingSettings(),
   ]);
 

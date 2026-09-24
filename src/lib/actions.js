@@ -9,7 +9,6 @@ import {
   getEvents,
   getSemester,
   getSemesters,
-  getSemestersFresh,
   getBrandingSettings,
   saveBrandingSettings,
   renameChapterInEventHosts,
@@ -342,7 +341,7 @@ export async function saveBrandingAction(formData) {
  */
 export async function completeSetupAction(formData) {
   await requireSession();
-  const existing = await getSemestersFresh();
+  const existing = await getSemesters();
   if (existing.length > 0) redirect("/calendar");
 
   const chapterName = String(formData.get("chapterName") ?? "").trim();
@@ -368,7 +367,7 @@ export async function completeSetupAction(formData) {
   const semester = { id: semesterIdFromLabel(fields.label, new Set()), ...fields };
   await saveSemester(semester);
   if (formData.get("exampleData")) {
-    await seedExampleData(semester);
+    await seedExampleData(semester, chapterName);
   }
 
   revalidatePath("/", "layout");
@@ -413,8 +412,7 @@ export async function deleteSemesterAction(formData) {
   // Fast, friendly early exit for the common case — avoids an extra Redis
   // round trip when this is obviously the only semester. The real guard
   // (safe against two nearly-simultaneous deletes) lives in deleteSemester
-  // itself, which re-checks against a fresh read rather than trusting this
-  // cached one.
+  // itself, which re-checks inside Redis rather than trusting this read.
   if (semesters.length <= 1) redirect("/settings?error=last");
 
   let deleted = true;
