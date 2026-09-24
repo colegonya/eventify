@@ -19,6 +19,7 @@ import {
   todayInTimeZone,
 } from "@/lib/dates";
 import { buildCalendarHref, readCalendarParams } from "@/lib/calendarUrl";
+import { prefetchForSemester } from "@/lib/semesterPrefetch";
 import { getEditorSupportingDataAction } from "@/lib/actions";
 import { SemesterSwitcher } from "@/components/SemesterSwitcher";
 import { Legend, LegendDropdown } from "@/components/Legend";
@@ -38,6 +39,7 @@ export default async function CalendarPage({
   searchParams,
 }) {
   const params = await searchParams;
+  const loadGrid = prefetchForSemester(params.semester, getCalendarGridData);
   const semesters = await requireSemesters();
 
   if (semesters.length === 0) {
@@ -79,7 +81,7 @@ export default async function CalendarPage({
     showOnboardingChecklist,
     initialEditorData,
   ] = await Promise.all([
-    getCalendarGridData(semester.id),
+    loadGrid(semester.id),
     getBrandingSettings(),
     isOnboardingChecklistDismissed().then((dismissed) => !dismissed),
     mightOpenEditorOnLoad ? getEditorSupportingDataAction(semester.id) : Promise.resolve(null),

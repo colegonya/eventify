@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getEvents, getEquipmentItems, getCategories, getBrandingSettings } from "@/lib/data";
 import { requireSemesters } from "@/lib/setup";
+import { prefetchForSemester } from "@/lib/semesterPrefetch";
 import {
   computeSemesterBudget,
   computeAlerts,
@@ -27,6 +28,10 @@ export default async function BudgetPage({
   searchParams,
 }) {
   const params = await searchParams;
+  const loadEvents = prefetchForSemester(params.semester, getEvents);
+  // Equipment is one list for every semester, so it can start right away.
+  const equipmentRead = getEquipmentItems();
+  equipmentRead.catch(() => {}); // Abandoned if setup redirects first.
   const semesters = await requireSemesters();
 
   if (semesters.length === 0) {
@@ -40,8 +45,8 @@ export default async function BudgetPage({
   const semester =
     semesters.find((s) => s.id === params.semester) ?? semesters[0];
   const [events, allEquipment, categories, { words }] = await Promise.all([
-    getEvents(semester.id),
-    getEquipmentItems(),
+    loadEvents(semester.id),
+    equipmentRead,
     getCategories(),
     getBrandingSettings(),
   ]);

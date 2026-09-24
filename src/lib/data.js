@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { kv } from "@/lib/kv";
 import { parseISODate, formatISODate, isValidTimeZone } from "@/lib/dates";
 import {
@@ -42,38 +43,48 @@ const EQUIPMENT_KEY = "equipment";
 // instance skip those reads instead of re-probing Redis every request forever.
 let seeded = false;
 
-// Every page load calls ensureDefaults() -> getSemesters(), which is otherwise
-// a full Redis round trip for a value that changes maybe once a semester.
-// This in-process cache turns repeat reads on a warm instance into memory
-// hits; the short TTL bounds staleness across instances/restarts, and writes
-// invalidate their key immediately so same-instance reads never see stale
-// data.
-const CACHE_TTL_MS = 60_000;
-const cache = new Map();
+// Every read goes to Redis; nothing is kept between requests. This used to
+// hold a 60-second copy per server instance, which showed an officer their
+// own saved change "reverting" whenever the next request landed on another
+// instance, and kept a failed write on screen as if it had saved.
+//
+// What keeps that from costing speed:
+//   - The small, chapter-wide values almost every page needs come back in one
+//     pipelined request (getSharedData below).
+//   - React's cache() shares a read across one request, so the layout, the
+//     page, and generateMetadata asking for branding make one request, not
+//     three. It's scoped to a single render, so it can't go stale.
+//   - Saves never edit the objects a read returned. They build new ones, so a
+//     value shared within a render can't change under another reader.
+//   - Saves read the list they're about to rewrite straight from Redis, never
+//     through the shared read, so a second save in the same request builds
+//     on the first instead of on a copy from before it.
 
-async function cached(key, fetcher) {
-  const entry = cache.get(key);
-  if (entry && entry.expiresAt > Date.now()) return entry.value;
-  const value = await fetcher();
-  cache.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
-  return value;
-}
+const SHARED_KEYS = [
+  SEMESTERS_KEY,
+  BRANDING_KEY,
+  ONBOARDING_KEY,
+  CATEGORIES_KEY,
+  DRINK_PRESETS_KEY,
+  DRINK_GROUPS_KEY,
+];
 
-function invalidateCache(key) {
-  cache.delete(key);
-}
+const getSharedData = cache(async () => {
+  const [semesters, branding, onboardingDismissed, categories, drinkPresets, drinkGroups] = await kv.mget(
+    ...SHARED_KEYS,
+  );
+  return {
+    semesters: semesters ?? [],
+    branding: branding ?? {},
+    onboardingDismissed: onboardingDismissed ?? false,
+    categories: categories ?? [],
+    drinkPresets: drinkPresets ?? {},
+    drinkGroups: drinkGroups ?? [],
+  };
+});
 
 export async function getSemesters() {
-  return cached(SEMESTERS_KEY, async () => (await kv.get(SEMESTERS_KEY)) ?? []);
-}
-
-// Bypasses the 60s cache. Only for the first-run setup guard: a cached empty
-// list would let two officers setting up at the same moment each create a
-// "first" semester, and setup runs once so the extra round trip is free.
-export async function getSemestersFresh() {
-  const semesters = (await kv.get(SEMESTERS_KEY)) ?? [];
-  cache.set(SEMESTERS_KEY, { value: semesters, expiresAt: Date.now() + CACHE_TTL_MS });
-  return semesters;
+  return (await getSharedData()).semesters;
 }
 
 export async function getSemester(id) {
@@ -81,16 +92,16 @@ export async function getSemester(id) {
   return semesters.find((s) => s.id === id);
 }
 
+/** `list` with `record` replacing the entry that has its id, or added at the end. */
+function upsertById(list, record) {
+  return list.some((item) => item.id === record.id)
+    ? list.map((item) => (item.id === record.id ? record : item))
+    : [...list, record];
+}
+
 export async function saveSemester(semester) {
-  const semesters = await getSemesters();
-  const index = semesters.findIndex((s) => s.id === semester.id);
-  if (index === -1) {
-    semesters.push(semester);
-  } else {
-    semesters[index] = semester;
-  }
-  await kv.set(SEMESTERS_KEY, semesters);
-  invalidateCache(SEMESTERS_KEY);
+  const semesters = (await kv.get(SEMESTERS_KEY)) ?? [];
+  await kv.set(SEMESTERS_KEY, upsertById(semesters, semester));
 }
 
 // Removes `id` from the semesters list in one atomic Redis-side operation,
@@ -138,7 +149,6 @@ export async function deleteSemester(id) {
   if (!removed) {
     throw new Error("Cannot delete the only remaining semester.");
   }
-  invalidateCache(SEMESTERS_KEY);
   await kv.del(eventsKey(id), gameDaysKey(id), contactsKey(id));
 
   const equipment = await getEquipmentItems();
@@ -158,14 +168,7 @@ export async function getEvents(semesterId) {
 }
 
 export async function saveEvent(event) {
-  const events = await getEvents(event.semesterId);
-  const index = events.findIndex((e) => e.id === event.id);
-  if (index === -1) {
-    events.push(event);
-  } else {
-    events[index] = event;
-  }
-  await kv.set(eventsKey(event.semesterId), events);
+  await kv.set(eventsKey(event.semesterId), upsertById(await getEvents(event.semesterId), event));
 }
 
 export async function deleteEvent(
@@ -202,29 +205,25 @@ export async function saveContacts(
 }
 
 export async function getDrinkPresets() {
-  return cached(DRINK_PRESETS_KEY, async () => (await kv.get(DRINK_PRESETS_KEY)) ?? {});
+  return (await getSharedData()).drinkPresets;
 }
 
 export async function saveDrinkPresets(presets) {
   await kv.set(DRINK_PRESETS_KEY, presets);
-  invalidateCache(DRINK_PRESETS_KEY);
 }
 
 export async function getDrinkGroups() {
-  return cached(DRINK_GROUPS_KEY, async () => (await kv.get(DRINK_GROUPS_KEY)) ?? []);
+  return (await getSharedData()).drinkGroups;
 }
 
 export async function saveDrinkGroups(groups) {
   await kv.set(DRINK_GROUPS_KEY, groups);
-  invalidateCache(DRINK_GROUPS_KEY);
 }
 
 export async function addDrinkItemToGroup(groupId, item) {
-  const groups = await getDrinkGroups();
-  const group = groups.find((g) => g.id === groupId);
-  if (!group) return;
-  group.items.push(item);
-  await saveDrinkGroups(groups);
+  const groups = (await kv.get(DRINK_GROUPS_KEY)) ?? [];
+  if (!groups.some((g) => g.id === groupId)) return;
+  await saveDrinkGroups(groups.map((g) => (g.id === groupId ? { ...g, items: [...g.items, item] } : g)));
 }
 
 export async function getEquipmentItems() {
@@ -232,14 +231,7 @@ export async function getEquipmentItems() {
 }
 
 export async function saveEquipmentItem(item) {
-  const items = await getEquipmentItems();
-  const index = items.findIndex((i) => i.id === item.id);
-  if (index === -1) {
-    items.push(item);
-  } else {
-    items[index] = item;
-  }
-  await kv.set(EQUIPMENT_KEY, items);
+  await kv.set(EQUIPMENT_KEY, upsertById(await getEquipmentItems(), item));
 }
 
 export async function deleteEquipmentItem(id) {
@@ -254,12 +246,11 @@ export async function deleteEquipmentItem(id) {
 // equipment, since a category is a stable kind-of-event that applies across
 // semesters, not something that resets each term.
 export async function getCategories() {
-  return cached(CATEGORIES_KEY, async () => (await kv.get(CATEGORIES_KEY)) ?? []);
+  return (await getSharedData()).categories;
 }
 
 export async function saveCategories(categories) {
   await kv.set(CATEGORIES_KEY, categories);
-  invalidateCache(CATEGORIES_KEY);
 }
 
 // Bundles the reads the calendar grid needs on every visit into a single
@@ -323,7 +314,7 @@ export async function getEditorSupportingData(
  * wholesale, so a chapter that only sets a name still gets env colors.
  */
 export async function getBrandingSettings() {
-  const saved = await cached(BRANDING_KEY, async () => (await kv.get(BRANDING_KEY)) ?? {});
+  const saved = (await getSharedData()).branding;
   const chapterName = saved.chapterName?.trim() || DEFAULT_CHAPTER_NAME;
   const colors = {};
   for (const [, key] of BRAND_COLOR_VARS) {
@@ -376,7 +367,6 @@ export async function renameChapterInEventHosts(previousName, chapterName) {
 
 export async function saveBrandingSettings({ chapterName, colors, orgNoun, periodNoun, appTitle: title, timeZone }) {
   await kv.set(BRANDING_KEY, { chapterName, colors, orgNoun, periodNoun, appTitle: title, timeZone });
-  invalidateCache(BRANDING_KEY);
 }
 
 // Whether the "get the most out of your calendar" checklist on the Calendar
@@ -388,12 +378,11 @@ export async function saveBrandingSettings({ chapterName, colors, orgNoun, perio
 // finished setup before this existed, since the content is generically
 // useful and dismissing it is one click.
 export async function isOnboardingChecklistDismissed() {
-  return cached(ONBOARDING_KEY, async () => (await kv.get(ONBOARDING_KEY)) ?? false);
+  return (await getSharedData()).onboardingDismissed;
 }
 
 export async function dismissOnboardingChecklist() {
   await kv.set(ONBOARDING_KEY, true);
-  invalidateCache(ONBOARDING_KEY);
 }
 
 // Merges the legacy customDrinkItems list into the seeded groups, matching by
@@ -436,7 +425,6 @@ export async function ensureDefaults() {
 
   if ((await kv.get(CATEGORIES_KEY)) === null) {
     await kv.set(CATEGORIES_KEY, STARTER_CATEGORIES);
-    invalidateCache(CATEGORIES_KEY);
   }
 
   // Materializes the drinkGroups catalog: seeded defaults merged with any
@@ -454,7 +442,6 @@ export async function ensureDefaults() {
     const customItems = (await kv.get(CUSTOM_DRINK_ITEMS_KEY)) ?? [];
     const groups = buildInitialDrinkGroups(customItems);
     const wasSet = await kv.set(DRINK_GROUPS_KEY, groups, { nx: true });
-    invalidateCache(DRINK_GROUPS_KEY);
 
     if (wasSet) {
       const presets = await kv.get(DRINK_PRESETS_KEY);
@@ -474,14 +461,12 @@ export async function ensureDefaults() {
           }
         }
         await kv.set(DRINK_PRESETS_KEY, migrated);
-        invalidateCache(DRINK_PRESETS_KEY);
       }
     }
   }
 
   if ((await kv.get(DRINK_PRESETS_KEY)) === null) {
     await kv.set(DRINK_PRESETS_KEY, DEFAULT_DRINK_PRESETS);
-    invalidateCache(DRINK_PRESETS_KEY);
   }
 
   seeded = true;
@@ -500,9 +485,12 @@ export async function ensureDefaults() {
  * say) would get examples scattered for months past their own semester's end
  * date. Scaling keeps every example within the chapter's actual start/end,
  * compressed or stretched to fit, and preserves each event's relative order.
+ *
+ * `chapterName` is passed in rather than read back: setup saves it moments
+ * earlier in the same request, and a read shared across that request could
+ * still hold the placeholder.
  */
-export async function seedExampleData(semester) {
-  const { chapterName } = await getBrandingSettings();
+export async function seedExampleData(semester, chapterName) {
   const starterStart = parseISODate(STARTER_SEMESTER.startDate).getTime();
   const starterSpanMs = parseISODate(STARTER_SEMESTER.endDate).getTime() - starterStart;
   const newStart = parseISODate(semester.startDate).getTime();
