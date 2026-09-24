@@ -13,6 +13,8 @@ import {
   isSameMonth,
   isToday,
   eventDatesInRange,
+  isValidTimeZone,
+  todayInTimeZone,
 } from "@/lib/dates";
 
 describe("ISO parsing and formatting", () => {
@@ -103,11 +105,9 @@ describe("calendar cell predicates", () => {
     expect(isSameMonth(parseISODate("2026-08-31"), "2026-09")).toBe(false);
   });
 
-  it("compares today by calendar date, not by instant", () => {
-    const today = new Date("2026-09-14T23:59:00Z");
-
-    expect(isToday(parseISODate("2026-09-14"), today)).toBe(true);
-    expect(isToday(parseISODate("2026-09-15"), today)).toBe(false);
+  it("compares a grid date against today's date string", () => {
+    expect(isToday(parseISODate("2026-09-14"), "2026-09-14")).toBe(true);
+    expect(isToday(parseISODate("2026-09-15"), "2026-09-14")).toBe(false);
   });
 });
 
@@ -126,5 +126,36 @@ describe("eventDatesInRange", () => {
 
   it("returns nothing when the range runs backwards", () => {
     expect(eventDatesInRange("2026-10-24", "2026-10-23")).toEqual([]);
+  });
+});
+
+describe("todayInTimeZone", () => {
+  // 5:25pm on Sept 23 in Los Angeles, 8:25pm in New York, already the 24th in UTC.
+  const evening = new Date("2026-09-24T00:25:00Z");
+
+  it("gives the organization's date, not the server's UTC date", () => {
+    expect(todayInTimeZone("America/Los_Angeles", evening)).toBe("2026-09-23");
+    expect(todayInTimeZone("America/New_York", evening)).toBe("2026-09-23");
+    expect(todayInTimeZone("UTC", evening)).toBe("2026-09-24");
+    expect(todayInTimeZone("Asia/Tokyo", evening)).toBe("2026-09-24");
+  });
+
+  it("follows daylight saving time", () => {
+    // Pacific is UTC-8 in winter and UTC-7 in summer.
+    expect(todayInTimeZone("America/Los_Angeles", new Date("2026-01-15T07:30:00Z"))).toBe("2026-01-14");
+    expect(todayInTimeZone("America/Los_Angeles", new Date("2026-07-15T07:30:00Z"))).toBe("2026-07-15");
+  });
+
+  it("turns over the month on the right evening", () => {
+    // 9pm Pacific on Sept 30 is Oct 1 in UTC; the calendar must still open on September.
+    expect(todayInTimeZone("America/Los_Angeles", new Date("2026-10-01T04:00:00Z"))).toBe("2026-09-30");
+  });
+});
+
+describe("isValidTimeZone", () => {
+  it("accepts IANA zone names and rejects anything else", () => {
+    expect(isValidTimeZone("America/Los_Angeles")).toBe(true);
+    expect(isValidTimeZone("UTC")).toBe(true);
+    for (const bad of ["PST-ish", "Mars/Olympus", "", undefined, 42]) expect(isValidTimeZone(bad)).toBe(false);
   });
 });

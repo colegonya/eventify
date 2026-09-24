@@ -1,10 +1,11 @@
 import "server-only";
 import { kv } from "@/lib/kv";
-import { parseISODate, formatISODate } from "@/lib/dates";
+import { parseISODate, formatISODate, isValidTimeZone } from "@/lib/dates";
 import {
   DEFAULT_CHAPTER_NAME,
   DEFAULT_BRAND_COLORS,
   BRAND_COLOR_VARS,
+  DEFAULT_TIME_ZONE,
   appTitle,
 } from "@/lib/config";
 import { vocabulary } from "@/lib/vocabulary";
@@ -340,6 +341,8 @@ export async function getBrandingSettings() {
     appTitleOverride: saved.appTitle?.trim() ?? "",
     colors,
     words,
+    // What "today" means for this organization. See todayInTimeZone.
+    timeZone: isValidTimeZone(saved.timeZone) ? saved.timeZone : DEFAULT_TIME_ZONE,
   };
 }
 
@@ -371,8 +374,8 @@ export async function renameChapterInEventHosts(previousName, chapterName) {
   }
 }
 
-export async function saveBrandingSettings({ chapterName, colors, orgNoun, periodNoun, appTitle: title }) {
-  await kv.set(BRANDING_KEY, { chapterName, colors, orgNoun, periodNoun, appTitle: title });
+export async function saveBrandingSettings({ chapterName, colors, orgNoun, periodNoun, appTitle: title, timeZone }) {
+  await kv.set(BRANDING_KEY, { chapterName, colors, orgNoun, periodNoun, appTitle: title, timeZone });
   invalidateCache(BRANDING_KEY);
 }
 

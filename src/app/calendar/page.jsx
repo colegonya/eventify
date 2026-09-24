@@ -15,6 +15,7 @@ import {
   parseISODate,
   addDays,
   eventDatesInRange,
+  todayInTimeZone,
 } from "@/lib/dates";
 import { buildCalendarHref, readCalendarParams } from "@/lib/calendarUrl";
 import { getEditorSupportingDataAction } from "@/lib/actions";
@@ -52,8 +53,9 @@ export default async function CalendarPage({
   // Default landing month: once the semester is close (within a week of its
   // start), open to today's month; before then — e.g. checking over the
   // summer — keep landing on the semester start.
-  const today = new Date();
-  const todayIso = formatISODate(today);
+  // In the organization's time zone, not the server's UTC. See todayInTimeZone.
+  const { timeZone } = await getBrandingSettings();
+  const todayIso = todayInTimeZone(timeZone);
   const nearStartIso = formatISODate(addDays(parseISODate(semester.startDate), -7));
   const defaultMonth = todayIso >= nearStartIso ? todayIso.slice(0, 7) : semester.startDate.slice(0, 7);
   const { view, month, week: weekAnchor } = readCalendarParams(params, defaultMonth);
@@ -282,7 +284,7 @@ export default async function CalendarPage({
               markers={markersByDate.get(iso) ?? []}
               categoriesById={categoriesById}
               dimmed={view === "month" && !isSameMonth(date, month)}
-              isToday={isToday(date, today)}
+              isToday={isToday(date, todayIso)}
               semesterId={semester.id}
               conflicts={conflicts}
             />

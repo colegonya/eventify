@@ -111,8 +111,9 @@ export function isSameMonth(date, yearMonth) {
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1;
 }
 
-export function isToday(date, today) {
-  return formatISODate(date) === formatISODate(today);
+/** Whether a grid date is today, given today as YYYY-MM-DD (see todayInTimeZone). */
+export function isToday(date, todayIso) {
+  return formatISODate(date) === todayIso;
 }
 
 /** Inclusive list of ISO dates from startDate to endDate (same value for single-day events). */
@@ -142,3 +143,36 @@ export function isRealYearMonth(value) {
 }
 
 export const isTime = (value) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+
+/** Whether a string is an IANA time zone this runtime knows, like "America/Los_Angeles". */
+export function isValidTimeZone(timeZone) {
+  if (typeof timeZone !== "string" || !timeZone) return false;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Today's date as YYYY-MM-DD in the organization's time zone.
+ *
+ * Servers run on UTC, so formatISODate(new Date()) turns over at 5pm Pacific
+ * or 8pm Eastern: every evening the today marker jumped to tomorrow, "meeting
+ * was N days ago" was off by one, and on a month's last evening the calendar
+ * opened on the next month. Evenings are exactly when a social chair checks.
+ */
+export function todayInTimeZone(timeZone, now = new Date()) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    })
+      .formatToParts(now)
+      .map((part) => [part.type, part.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}

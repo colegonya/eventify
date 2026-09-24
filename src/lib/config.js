@@ -8,6 +8,11 @@ export const DEFAULT_CHAPTER_NAME =
 
 export const appTitle = (chapterName) => `${chapterName} Social Calendar`;
 
+// What "today" means for a deployment that hasn't picked a time zone. Setup
+// fills one in from the officer's browser, so this only applies to instances
+// created before the setting existed.
+export const DEFAULT_TIME_ZONE = "America/Los_Angeles";
+
 // Unset by default, so every deployment gets the generic palette from
 // globals.css until a chapter picks its own — one shared codebase serves both
 // the public template and a chapter's branded instance without the two
