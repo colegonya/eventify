@@ -40,7 +40,14 @@ The `@/` path alias resolves to `src/`, matching `jsconfig.json`.
 
 **Server Components** are not unit-testable today. Vitest cannot render async Server Components, which is most of `src/app`. Cover those through the browser instead.
 
-**End-to-end** tests (`e2e/`) drive a real browser through the app with [Playwright](https://playwright.dev). They cover what Vitest can't reach: Server Components, server actions, `data.js`, and the login gate.
+**Integration tests** (`test/integration/`) run `data.js` and the storage upgrade in `migrate.js` against a real Redis: the same local stand-in the browser tests use (see below). They cover what an in-memory fake can't: Lua scripts, transactions, and two saves racing each other. Each test empties the database, so they refuse any host that isn't local. `npm test` leaves them out, so it needs nothing running; run them with:
+
+```bash
+docker compose up -d
+npm run test:integration
+```
+
+**End-to-end** tests (`e2e/`) drive a real browser through the app with [Playwright](https://playwright.dev). They cover what Vitest can't reach: Server Components, server actions, and the login gate.
 
 They run against a production build (`next build && next start`), because some behavior only exists there: Next.js strips server error messages in production, for one. For the database, [serverless-redis-http](https://github.com/hiett/serverless-redis-http) stands in for Upstash. It speaks the same HTTP protocol in front of a plain Redis, so the app's real Upstash client runs unchanged and no Upstash account is needed.
 
@@ -61,7 +68,8 @@ How the suite is laid out:
 - `desktop` runs at 1440×900 and `phone` at 375×812, both in Chromium.
 - `reliable-saves.spec.mjs` simulates a dropped connection by aborting server-action requests (POSTs with a `Next-Action` header) through `page.route`, so page loads keep working while saves fail.
 - `accessibility.spec.mjs` runs axe on every page and attaches the results to the report. It is report-only for now and will become a hard failure once the known contrast issues are fixed.
-- In CI, the `e2e` job runs alongside `check` and uploads the HTML report as the `playwright-report` artifact. Open it to see failure screenshots, traces, and axe results.
+- `concurrent-edits.spec.mjs` opens the same page as two officers in two browser contexts and has each edit a different row, the case where one save used to erase the other.
+- In CI, the `e2e` job runs the integration tests first, then this suite, alongside `check`, and uploads the HTML report as the `playwright-report` artifact. Open it to see failure screenshots, traces, and axe results.
 
 Add a test for a bug in the same change that fixes it. A test for a known, unfixed bug means either red CI or a skipped test, and this suite has neither.
 
@@ -76,7 +84,7 @@ Add a test for a bug in the same change that fixes it. A test for a known, unfix
 
 ## Coverage
 
-CI runs `npm run test:coverage` and fails below the thresholds in `vitest.config.mjs`. Coverage is measured over `src/lib` only, and `data.js` and `actions.js` are excluded from even that: one is Redis calls and the other is `"use server"` orchestration, so a number including them would be dominated by code Vitest can't reach and the threshold would mean nothing. When logic inside either is worth pinning, move it to a plain module first — that's what `money.js` and `semesters.js` are.
+CI runs `npm run test:coverage` and fails below the thresholds in `vitest.config.mjs`. Coverage is measured over `src/lib` only, and `data.js`, `migrate.js` and `actions.js` are excluded from even that: the first two are Redis calls (covered by the integration tests) and the last is `"use server"` orchestration, so a number including them would be dominated by code the unit tests can't reach and the threshold would mean nothing. When logic inside one is worth pinning, move it to a plain module first. That's what `money.js`, `semesters.js` and `migrationPlan.js` are.
 
 The thresholds sit a few points under current coverage. They exist to catch a regression, not to be nudged up after every change.
 

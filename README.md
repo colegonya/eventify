@@ -35,6 +35,10 @@ Everything after that is editable in the app, from the **Settings** tab: your ch
 
 Every push to your new repo's main branch redeploys automatically. So if you later decide to tweak the code (see [Local development](#local-development-optional) below), Vercel just picks it up.
 
+### Updating an older copy
+
+Newer versions store each event, contact and category as its own record, so two officers saving at the same time no longer erase each other's changes. Your data moves over by itself the first time anyone opens the app after the update. You don't have to do anything. The old copy stays in your database for a week as a backup and is then deleted by your production site (preview deployments never delete it). To look before it moves, save your own copy, or undo it, see the notes at the top of `scripts/migrate.mjs`.
+
 ### Environment variables
 
 Only three of these matter, and the deploy button asks you to type in exactly one of them — the other two get filled in automatically by the Upstash step.

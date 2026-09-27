@@ -73,6 +73,9 @@ jobs:
 
       - run: npm ci
 
+      # The storage layer and the data migration, against the same Redis.
+      - run: npm run test:integration
+
       - run: npx playwright install --with-deps chromium
 
       # playwright.config.mjs builds and starts the app itself, with the test

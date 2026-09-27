@@ -8,51 +8,88 @@ const form = (entries) => {
 };
 
 describe("parseDrinkGroupsForm", () => {
-  it("reads groups and items in form order, with prices in dollars", () => {
+  const empty = { groups: [], items: [] };
+  const stored = {
+    groups: [{ id: "g1", label: "Liquor", position: 0 }],
+    items: [
+      { id: "i1", groupId: "g1", name: "Vodka", price: 14.79, position: 0 },
+      { id: "i2", groupId: "g1", name: "Rum", price: 20, position: 1 },
+    ],
+  };
+
+  it("reads the groups and items sent, with prices in dollars", () => {
     const result = parseDrinkGroupsForm(
       form([
         ["group::g1::label", "Liquor"],
         ["item::g1::i1::name", "Vodka"],
         ["item::g1::i1::price", "14.79"],
         ["group::g2::label", ""],
-        ["item::g2::i2::name", "Cups"],
-        ["item::g2::i2::price", ""],
+        ["item::g2::i3::name", "Cups"],
+        ["item::g2::i3::price", ""],
       ]),
-      new Set(["i1", "i2"]),
+      stored,
     );
-    expect(result.data).toEqual([
-      { id: "g1", label: "Liquor", items: [{ id: "i1", name: "Vodka", price: 14.79 }] },
-      { id: "g2", label: "Untitled group", items: [{ id: "i2", name: "Cups", price: 0 }] },
-    ]);
+    expect(result.data).toEqual({
+      groups: [
+        { id: "g1", label: "Liquor" },
+        { id: "g2", label: "Untitled group" },
+      ],
+      items: [
+        { id: "i1", groupId: "g1", name: "Vodka", price: 14.79 },
+        { id: "i3", groupId: "g2", name: "Cups", price: 0 },
+      ],
+      deletedGroupIds: [],
+      deletedItemIds: [],
+    });
   });
 
-  it("refuses to drop a saved item whose name was cleared or duplicated", () => {
-    const cleared = form([["group::g1::label", "Liquor"], ["item::g1::i1::name", ""]]);
-    expect(parseDrinkGroupsForm(cleared, new Set(["i1"])).ok).toBe(false);
-    expect(parseDrinkGroupsForm(cleared, new Set()).data).toEqual([{ id: "g1", label: "Liquor", items: [] }]);
+  it("accepts an item sent without its group, when the group is saved", () => {
+    const result = parseDrinkGroupsForm(form([["item::g1::i2::name", "Dark rum"], ["item::g1::i2::price", "22"]]), stored);
+    expect(result.data.items).toEqual([{ id: "i2", groupId: "g1", name: "Dark rum", price: 22 }]);
+  });
 
-    const duplicate = form([
-      ["group::g1::label", "Liquor"],
-      ["item::g1::i1::name", "Vodka"],
-      ["item::g1::i2::name", "vodka"],
-    ]);
-    expect(parseDrinkGroupsForm(duplicate, new Set(["i1", "i2"])).error).toBe(
+  it("refuses to drop a saved item whose name was cleared", () => {
+    const cleared = form([["item::g1::i1::name", ""]]);
+    expect(parseDrinkGroupsForm(cleared, stored).ok).toBe(false);
+    const unsaved = form([["group::g1::label", "Liquor"], ["item::g1::new::name", ""]]);
+    expect(parseDrinkGroupsForm(unsaved, stored).data.items).toEqual([]);
+  });
+
+  it("checks names against the whole saved catalog, not only the rows sent", () => {
+    const duplicate = form([["item::g1::i3::name", "vodka"], ["item::g1::i3::price", "1"]]);
+    expect(parseDrinkGroupsForm(duplicate, stored).error).toBe(
       'Two items are both named "vodka". Give one a different name.',
+    );
+    // Removing the saved one in the same save frees the name.
+    duplicate.append("deletedRow", "i:i1");
+    expect(parseDrinkGroupsForm(duplicate, stored).ok).toBe(true);
+  });
+
+  it("deletes every saved item in a deleted group", () => {
+    const result = parseDrinkGroupsForm(form([["deletedRow", "g:g1"], ["deletedRow", "i:i1"]]), stored);
+    expect(result.data.deletedGroupIds).toEqual(["g1"]);
+    expect(result.data.deletedItemIds.sort()).toEqual(["i1", "i2"]);
+  });
+
+  it("refuses an item for a group that was deleted", () => {
+    const orphan = form([["item::gone::i9::name", "Gin"], ["item::gone::i9::price", "5"]]);
+    expect(parseDrinkGroupsForm(orphan, stored).error).toBe(
+      "That drink group was deleted. Reload the page to see the current catalog.",
     );
   });
 
   it("refuses a bad price, naming the item", () => {
     const bad = form([["group::g1::label", "L"], ["item::g1::i1::name", "Vodka"], ["item::g1::i1::price", "-3"]]);
-    expect(parseDrinkGroupsForm(bad, new Set()).error).toBe("Vodka: A price can't be negative.");
+    expect(parseDrinkGroupsForm(bad, empty).error).toBe("Vodka: A price can't be negative.");
   });
 });
 
 describe("parseDrinkPresetsForm", () => {
-  it("keeps positive whole quantities and leaves out blanks and zeros", () => {
+  it("keeps positive whole quantities, and lists every category sent even with none left", () => {
     const result = parseDrinkPresetsForm(
       form([["preset::mixer::vodka", "2"], ["preset::mixer::rum", "0"], ["preset::party::vodka", ""], ["other", "9"]]),
     );
-    expect(result.data).toEqual({ mixer: { vodka: 2 } });
+    expect(result.data).toEqual({ mixer: { vodka: 2 }, party: {} });
   });
 
   it("refuses negatives, fractions, and huge numbers", () => {

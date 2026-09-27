@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { saveCategoriesAction } from "@/lib/actions";
 import { useDebouncedAutosave } from "@/components/useDebouncedAutosave";
+import { categoryRows } from "@/lib/forms/rowKeys";
 import { AutosaveStatus } from "@/components/AutosaveStatus";
 
 let nextRowKey = 0;
@@ -12,6 +13,7 @@ export function CategoriesEditor({ categories }) {
 
   const { formRef, scheduleSave, status } = useDebouncedAutosave(
     saveCategoriesAction,
+    { rowKey: categoryRows },
   );
 
   const addRow = () =>

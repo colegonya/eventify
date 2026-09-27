@@ -6,6 +6,7 @@ import { saveContactsAction } from "@/lib/actions";
 import { ContactStatusPicker } from "@/components/ContactStatusPicker";
 import { pastDueMeetingDays, summarizeContacts } from "@/lib/contacts";
 import { useDebouncedAutosave } from "@/components/useDebouncedAutosave";
+import { contactRows } from "@/lib/forms/rowKeys";
 import { AutosaveStatus } from "@/components/AutosaveStatus";
 
 let nextRowKey = 0;
@@ -52,6 +53,7 @@ export function ContactsTable({
 
   const { formRef, scheduleSave, status } = useDebouncedAutosave(
     saveContactsAction,
+    { rowKey: contactRows },
   );
 
   const input =
@@ -79,6 +81,15 @@ export function ContactsTable({
         notes: "",
       },
     ]);
+
+  // Typed values also go into the row's state, though the inputs stay
+  // uncontrolled: typing an org moves the row into that org's card on blur,
+  // which rebuilds its inputs from state. Without this they came back with
+  // the values from page load, blanking a new contact's name.
+  const remember = (key, field) => (e) => {
+    const value = e.target.value;
+    setRows((rs) => rs.map((r) => (r.key === key ? { ...r, [field]: value } : r)));
+  };
 
   const removeRow = (key) => {
     setRows((rs) => rs.filter((r) => r.key !== key));
@@ -161,6 +172,7 @@ export function ContactsTable({
                         type="text"
                         name="contactPosition"
                         defaultValue={row.position}
+                        onChange={remember(row.key, "position")}
                         aria-label="Contact name or role"
                         placeholder="Name or role, e.g. Social Chair"
                         className={`flex-1 rounded-sm border border-brand-ink/20 bg-background px-2 py-1.5 text-[15px] font-semibold text-brand-ink outline-none transition-colors placeholder:text-brand-ink/30 placeholder:font-normal focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15`}
@@ -218,6 +230,7 @@ export function ContactsTable({
                         defaultValue={row.phone}
                         onChange={(e) => {
                           e.target.value = formatPhoneInput(e.target.value);
+                          remember(row.key, "phone")(e);
                         }}
                         aria-label="Phone number"
                         placeholder="(555) 555-5555"
@@ -252,6 +265,7 @@ export function ContactsTable({
                           rows={1}
                           ref={autoResizeNotes}
                           onInput={(e) => autoResizeNotes(e.currentTarget)}
+                          onChange={remember(row.key, "notes")}
                           className={`${input} resize-none overflow-hidden leading-snug`}
                         />
                       </div>
