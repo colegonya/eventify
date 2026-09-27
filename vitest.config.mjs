@@ -11,6 +11,8 @@ export default defineConfig({
     environment: "node",
     globals: true,
     include: ["test/**/*.test.{js,jsx}"],
+    // These need a real Redis; see vitest.integration.config.mjs.
+    exclude: ["test/integration/**", "node_modules/**"],
     coverage: {
       provider: "v8",
       // Only src/lib. TESTING.md is explicit that this is where the value is:
@@ -25,6 +27,9 @@ export default defineConfig({
         // TESTING.md. The logic worth pinning has been pulled out of them
         // into money.js and semesters.js, which are measured below.
         "src/lib/data.js",
+        // The storage upgrade's Redis I/O, covered by test/integration against
+        // a real Redis. Its logic is in migrationPlan.js, measured here.
+        "src/lib/migrate.js",
         "src/lib/actions.js",
         "src/lib/loginAction.js",
         // Constants, env-var defaults, and a three-line redirect wrapper:

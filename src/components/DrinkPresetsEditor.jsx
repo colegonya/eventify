@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { saveDrinkPresetsAction } from "@/lib/actions";
 import { useDebouncedAutosave } from "@/components/useDebouncedAutosave";
+import { drinkPresetRows } from "@/lib/forms/rowKeys";
 import { AutosaveStatus } from "@/components/AutosaveStatus";
 
 export function DrinkPresetsEditor({
@@ -13,6 +14,7 @@ export function DrinkPresetsEditor({
 
   const { formRef, scheduleSave, status } = useDebouncedAutosave(
     saveDrinkPresetsAction,
+    { rowKey: drinkPresetRows },
   );
 
   // Categories that had no typical order when the page loaded: collapsed, and

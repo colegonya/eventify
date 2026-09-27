@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveDrinkGroupsAction } from "@/lib/actions";
 import { useDebouncedAutosave } from "@/components/useDebouncedAutosave";
+import { drinkCatalogRows } from "@/lib/forms/rowKeys";
 import { AutosaveStatus } from "@/components/AutosaveStatus";
 
 export function DrinkGroupsEditor({ groups }) {
@@ -13,7 +14,7 @@ export function DrinkGroupsEditor({ groups }) {
 
   const { formRef, scheduleSave, status } = useDebouncedAutosave(
     saveDrinkGroupsAction,
-    { onSaved: () => router.refresh() },
+    { onSaved: () => router.refresh(), rowKey: drinkCatalogRows },
   );
 
   const addGroup = () => {

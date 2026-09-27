@@ -1,7 +1,12 @@
 import { CONTACT_STATUSES } from "@/types/contact";
 import { isHexColor } from "@/lib/color";
 import { fail, fields, isRealIsoDate, LIMITS, ok } from "@/lib/validation";
+import { DELETED_ROW_FIELD } from "@/lib/rowDiff";
 
+// Each list editor sends only the rows that changed since its last accepted
+// save, plus the ids of the rows it removed (see lib/rowDiff.js). The parsers
+// below read the changed rows; parseDeletedRows reads the removals.
+//
 // The rule every autosaving list editor follows: a row is deleted only by its
 // Remove button, which takes it out of the form entirely. A row that's still
 // in the form with its name cleared is an officer mid-retype, so a record
@@ -11,6 +16,18 @@ import { fail, fields, isRealIsoDate, LIMITS, ok } from "@/lib/validation";
 const tooMany = (what) => fail(`That's more ${what} than one list can hold (${LIMITS.rows}).`);
 
 const validId = (id) => typeof id === "string" && id.length > 0 && id.length <= 100;
+
+/**
+ * The ids of rows the editor removed. `prefix`, when given, keeps only ids
+ * that start with it and strips it (the drink catalog's "g:" and "i:").
+ */
+export function parseDeletedRows(formData, prefix = "") {
+  const all = fields(formData, DELETED_ROW_FIELD);
+  if (all.length > LIMITS.rows) return tooMany("removed rows");
+  const ids = all.filter((id) => id.startsWith(prefix)).map((id) => id.slice(prefix.length));
+  if (!ids.every(validId)) return fail("A removed row is missing its id. Reload the page and try again.");
+  return ok(ids);
+}
 
 /**
  * Contacts for one semester. `existingIds` is every contact id already saved
@@ -65,7 +82,7 @@ export function parseContactsForm(formData, semesterId, existingIds) {
   return ok(contacts);
 }
 
-/** The whole category list. `existingIds` is every category id already saved. */
+/** Changed category rows. `existingIds` is every category id already saved. */
 export function parseCategoriesForm(formData, existingIds) {
   const ids = fields(formData, "categoryId");
   const labels = fields(formData, "categoryLabel");

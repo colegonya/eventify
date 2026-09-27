@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createSaveQueue } from "@/lib/saveQueue";
+import { rowChanges, rowSnapshot } from "@/lib/rowDiff";
 
 const AUTOSAVE_DELAY_MS = 800;
 const SAVED_FLASH_MS = 2000;
@@ -31,9 +32,15 @@ const LABELS = {
  * `onSaved` runs after a successful save, for the one caller that needs to
  * refresh something else on the page afterward.
  *
+ * `rowKey` makes it send only the rows changed since the last save the
+ * server accepted, plus the ids of removed rows, instead of the whole form.
+ * See lib/rowDiff.js. The comparison happens when the save goes out, not
+ * when it's queued: saves go one at a time, so by then the one before has
+ * been accepted, and a retry compares against the same accepted state again.
+ *
  * Returns `status`, the props for <AutosaveStatus>.
  */
-export function useDebouncedAutosave(saveAction, { onSaved } = {}) {
+export function useDebouncedAutosave(saveAction, { onSaved, rowKey } = {}) {
   const [phase, setPhase] = useState("idle");
   const [error, setError] = useState(null);
   // Counts successful saves; "Saved" shows until the flash for the latest
@@ -45,16 +52,35 @@ export function useDebouncedAutosave(saveAction, { onSaved } = {}) {
   const mounted = useRef(false);
 
   // Read at save time, so the queue always calls the current props.
-  const latest = useRef({ saveAction, onSaved });
+  const latest = useRef({ saveAction, onSaved, rowKey });
   useEffect(() => {
-    latest.current = { saveAction, onSaved };
+    latest.current = { saveAction, onSaved, rowKey };
   });
+
+  // The rows as the server last accepted them. Read from the form as first
+  // rendered, which is what the server sent.
+  const savedRows = useRef(null);
+  useLayoutEffect(() => {
+    if (rowKey && formRef.current) savedRows.current = rowSnapshot(new FormData(formRef.current), rowKey);
+    // Only the first render's rows are the saved state; later ones are edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const send = async (formData) => {
+    const { saveAction: action, rowKey: key } = latest.current;
+    if (!key) return action(formData);
+    const { payload, next, empty } = rowChanges(formData, savedRows.current ?? new Map(), key);
+    if (empty) return { ok: true };
+    const result = await action(payload);
+    if (result?.ok) savedRows.current = next;
+    return result;
+  };
 
   // Built on first use, never during render, so it can close over refs.
   const queueRef = useRef(null);
   const getQueue = () => {
     queueRef.current ??= createSaveQueue({
-      save: (formData) => latest.current.saveAction(formData),
+      save: send,
       onSaved: () => latest.current.onSaved?.(),
       onStatus: (status) => {
         // A save sent on the way out can still fail after the editor is

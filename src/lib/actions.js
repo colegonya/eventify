@@ -16,17 +16,18 @@ import {
   deleteSemester as deleteSemesterRecord,
   seedExampleData,
   getContacts,
-  saveContacts,
+  saveContactChanges,
   getMarkers,
-  saveMarkers,
-  saveDrinkPresets,
+  saveMarkerChanges,
+  saveDrinkPresetChanges,
   getDrinkGroups,
-  saveDrinkGroups,
+  getDrinkCatalogRecords,
+  saveDrinkCatalogChanges,
   addDrinkItemToGroup,
   getEquipmentItems,
   saveEquipmentItem,
   deleteEquipmentItem as deleteEquipmentItemRecord,
-  saveCategories,
+  saveCategoryChanges,
   getCategories,
   dismissOnboardingChecklist,
   getEditorSupportingData,
@@ -45,12 +46,27 @@ import { semesterIdFromLabel, parseSemesterFields, parseMaxBudget } from "@/lib/
 import { fail, isRealIsoDate, LIMITS, ok } from "@/lib/validation";
 import { parseEventForm } from "@/lib/forms/event";
 import { parseEquipmentForm } from "@/lib/forms/equipment";
-import { parseCategoriesForm, parseContactsForm, parseMarkersForm } from "@/lib/forms/lists";
+import {
+  parseCategoriesForm,
+  parseContactsForm,
+  parseDeletedRows,
+  parseMarkersForm,
+} from "@/lib/forms/lists";
 import { parseDrinkGroupsForm, parseDrinkPresetsForm, parseNewDrinkItem } from "@/lib/forms/drinks";
 import { BRAND_COLOR_VARS, DEFAULT_TIME_ZONE } from "@/lib/config";
 import { isHexColor } from "@/lib/color";
 import { computeCategorySpendStats, computeEquipmentContribution } from "@/lib/budget";
 import { equipmentItemsForSemester } from "@/lib/equipment";
+
+// A list editor sends only its changed rows, so the per-request row limit no
+// longer caps the stored list. This does: new rows can't take a list past it.
+function listFull(existingIds, rows, what) {
+  const added = rows.filter((row) => !existingIds.has(row.id)).length;
+  if (added > 0 && existingIds.size + added > LIMITS.rows) {
+    return fail(`That's more ${what} than one list can hold (${LIMITS.rows}).`);
+  }
+  return null;
+}
 
 // Where a server-rendered form goes after a successful save. `saved` tells the
 // page which "✓ Saved" notice to show beside which button (see SavedNotice),
@@ -198,8 +214,12 @@ export async function saveContactsAction(formData) {
   const existingIds = new Set((await getContacts(semesterId)).map((c) => c.id));
   const parsed = parseContactsForm(formData, semesterId, existingIds);
   if (!parsed.ok) return parsed;
+  const deleted = parseDeletedRows(formData);
+  if (!deleted.ok) return deleted;
+  const full = listFull(existingIds, parsed.data, "contacts");
+  if (full) return full;
 
-  await saveContacts(semesterId, parsed.data);
+  await saveContactChanges(semesterId, parsed.data, deleted.data);
   revalidatePath("/contacts");
   return ok();
 }
@@ -209,28 +229,22 @@ export async function saveDrinkPresetsAction(formData) {
   const parsed = parseDrinkPresetsForm(formData);
   if (!parsed.ok) return parsed;
 
-  await saveDrinkPresets(parsed.data);
+  await saveDrinkPresetChanges(parsed.data);
   revalidatePath("/drinks");
   revalidatePath("/calendar");
   return ok();
 }
 
-// Full replace of the drinkGroups catalog from the Drinks tab's editor form.
-// Field naming: `group::${groupId}::label`, `item::${groupId}::${itemId}::name`,
-// `item::${groupId}::${itemId}::price` — iterated in entry (DOM) order, which
-// is what makes form order the stored order. Deleted groups/items are simply
-// absent from the form. Deliberately never writes drinkPresets: reads tolerate
-// orphaned item ids, and saveDrinkPresetsAction rebuilds the whole presets
-// object from rendered inputs on its next save anyway, so an active scrub here
-// would only add a read-modify-write race against the presets form that
-// auto-saves from the same page.
+// The Drinks tab's catalog editor: the groups and items it changed, and the
+// ones it removed (see parseDrinkGroupsForm). Deliberately never writes
+// drinkPresets: reads tolerate orphaned item ids, and scrubbing them here
+// would only race the presets form that autosaves from the same page.
 export async function saveDrinkGroupsAction(formData) {
   await requireSession();
-  const existingItemIds = new Set((await getDrinkGroups()).flatMap((g) => g.items.map((item) => item.id)));
-  const parsed = parseDrinkGroupsForm(formData, existingItemIds);
+  const parsed = parseDrinkGroupsForm(formData, await getDrinkCatalogRecords());
   if (!parsed.ok) return parsed;
 
-  await saveDrinkGroups(parsed.data);
+  await saveDrinkCatalogChanges(parsed.data);
   revalidatePath("/drinks");
   revalidatePath("/calendar");
   return ok();
@@ -273,9 +287,8 @@ export async function saveEquipmentAction(formData) {
 }
 
 /**
- * Replaces the whole marker list for a semester, the same way the contacts and
- * categories tables save: the editor owns every row on screen, so a removed
- * row is simply one that isn't in the submission.
+ * A semester's markers, saved the same way as the contacts and categories
+ * tables: the rows the editor changed, and the ids of the rows it removed.
  */
 export async function saveMarkersAction(formData) {
   await requireSession();
@@ -285,8 +298,12 @@ export async function saveMarkersAction(formData) {
   const existingIds = new Set((await getMarkers(semesterId)).map((m) => m.id));
   const parsed = parseMarkersForm(formData, semesterId, existingIds);
   if (!parsed.ok) return parsed;
+  const deleted = parseDeletedRows(formData);
+  if (!deleted.ok) return deleted;
+  const full = listFull(existingIds, parsed.data, "markers");
+  if (full) return full;
 
-  await saveMarkers(semesterId, parsed.data);
+  await saveMarkerChanges(semesterId, parsed.data, deleted.data);
   revalidatePath("/calendar");
   return ok();
 }
@@ -447,8 +464,12 @@ export async function saveCategoriesAction(formData) {
   const existingIds = new Set((await getCategories()).map((c) => c.id));
   const parsed = parseCategoriesForm(formData, existingIds);
   if (!parsed.ok) return parsed;
+  const deleted = parseDeletedRows(formData);
+  if (!deleted.ok) return deleted;
+  const full = listFull(existingIds, parsed.data, "categories");
+  if (full) return full;
 
-  await saveCategories(parsed.data);
+  await saveCategoryChanges(parsed.data, deleted.data);
   revalidatePath("/categories");
   revalidatePath("/calendar");
   revalidatePath("/budget");

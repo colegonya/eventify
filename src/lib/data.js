@@ -11,6 +11,15 @@ import {
 } from "@/lib/config";
 import { vocabulary } from "@/lib/vocabulary";
 import { normalizeMarkers } from "@/lib/markers";
+import { KEYS } from "@/lib/keys";
+import { migrateToV2, deleteLegacyKeys, SCHEMA_VERSION } from "@/lib/migrate";
+import {
+  assembleDrinkGroups,
+  byId,
+  hashValues,
+  inSortOrder,
+  withSortOrders,
+} from "@/lib/records";
 import {
   STARTER_SEMESTER,
   STARTER_EVENTS,
@@ -21,27 +30,36 @@ import {
   DEFAULT_DRINK_PRESETS,
 } from "@/lib/seed";
 
-const SEMESTERS_KEY = "semesters";
-const DRINK_PRESETS_KEY = "drinkPresets";
-const DRINK_GROUPS_KEY = "drinkGroups";
-// Legacy key, superseded by DRINK_GROUPS_KEY. Read once by the migration in
-// ensureDefaults(), then left orphaned in Redis as a rollback safety net.
-const CUSTOM_DRINK_ITEMS_KEY = "customDrinkItems";
-const CATEGORIES_KEY = "categories";
-const BRANDING_KEY = "branding";
-const ONBOARDING_KEY = "onboardingChecklistDismissed";
-const eventsKey = (semesterId) => `events:${semesterId}`;
-const gameDaysKey = (semesterId) => `gamedays:${semesterId}`;
-const contactsKey = (semesterId) => `contacts:${semesterId}`;
-// One global list, not partitioned per semester — see
-// EquipmentItem.purchasedSemesterId for how cost still attributes to a
-// specific semester's budget.
-const EQUIPMENT_KEY = "equipment";
+// Every collection is a Redis hash, one field per record (see keys.js), so a
+// save writes only the record it changed. The whole-list read-modify-write
+// this replaced lost whichever of two concurrent saves landed first.
+const DEFAULTS = {
+  categories: STARTER_CATEGORIES,
+  drinkGroups: DEFAULT_DRINK_GROUPS,
+  drinkPresets: DEFAULT_DRINK_PRESETS,
+};
 
-// Set once ensureDefaults() has confirmed (and, if needed, performed) the
-// default backfill on this warm instance, so later requests on the same
-// instance skip those reads instead of re-probing Redis every request forever.
-let seeded = false;
+// The move from whole-list keys to hashes, run by the first request each
+// server instance handles (see migrate.js for why that's safe with many
+// instances at once). After the first check it costs nothing: the promise
+// is kept for the life of the instance. A failure isn't kept, so the next
+// request tries again. getSharedData also re-checks the version on every
+// request, for free, in case the data was rolled back underneath a running
+// instance (scripts/migrate.mjs --rollback, or a test emptying Redis).
+let migration = null;
+function ensureMigrated() {
+  migration ??= migrateToV2(kv, { defaults: DEFAULTS }).catch((error) => {
+    migration = null;
+    throw error;
+  });
+  return migration;
+}
+
+// Checked once per instance: deletes the old keys a week after the upgrade.
+// Production only. A preview deployment can share production's database
+// while production still runs the release before the upgrade and reads the
+// old keys, so a preview opened a week later must never delete them.
+let legacyChecked = process.env.VERCEL_ENV !== "production";
 
 // Every read goes to Redis; nothing is kept between requests. This used to
 // hold a 60-second copy per server instance, which showed an officer their
@@ -56,32 +74,70 @@ let seeded = false;
 //     three. It's scoped to a single render, so it can't go stale.
 //   - Saves never edit the objects a read returned. They build new ones, so a
 //     value shared within a render can't change under another reader.
-//   - Saves read the list they're about to rewrite straight from Redis, never
-//     through the shared read, so a second save in the same request builds
-//     on the first instead of on a copy from before it.
 
-const SHARED_KEYS = [
-  SEMESTERS_KEY,
-  BRANDING_KEY,
-  ONBOARDING_KEY,
-  CATEGORIES_KEY,
-  DRINK_PRESETS_KEY,
-  DRINK_GROUPS_KEY,
-];
+async function readShared() {
+  const pipeline = kv.pipeline();
+  pipeline.get(KEYS.schemaVersion);
+  pipeline.hgetall(KEYS.semesters);
+  pipeline.get(KEYS.branding);
+  pipeline.get(KEYS.onboardingDismissed);
+  pipeline.hgetall(KEYS.categories);
+  pipeline.hgetall(KEYS.drinkPresets);
+  pipeline.hgetall(KEYS.drinkGroups);
+  pipeline.hgetall(KEYS.drinkItems);
+  return pipeline.exec();
+}
 
 const getSharedData = cache(async () => {
-  const [semesters, branding, onboardingDismissed, categories, drinkPresets, drinkGroups] = await kv.mget(
-    ...SHARED_KEYS,
-  );
+  await ensureMigrated();
+  let results = await readShared();
+  if (Number(results[0]) < SCHEMA_VERSION) {
+    migration = null;
+    await ensureMigrated();
+    results = await readShared();
+  }
+  const [, semesters, branding, onboardingDismissed, categories, drinkPresets, drinkGroups, drinkItems] = results;
   return {
-    semesters: semesters ?? [],
+    semesters: inSortOrder(semesters),
     branding: branding ?? {},
     onboardingDismissed: onboardingDismissed ?? false,
-    categories: categories ?? [],
+    categories: inSortOrder(categories),
     drinkPresets: drinkPresets ?? {},
-    drinkGroups: drinkGroups ?? [],
+    drinkGroups: assembleDrinkGroups(drinkGroups, drinkItems),
   };
 });
+
+/**
+ * Writes one record. An existing record keeps its place in the list; a new
+ * one goes last. Used where one form saves one record, so there's no list of
+ * sort orders to work from.
+ */
+async function saveOne(key, record) {
+  await ensureMigrated();
+  const stored = await kv.hget(key, record.id);
+  const sortOrder = record.sortOrder ?? stored?.sortOrder ?? Date.now();
+  await kv.hset(key, { [record.id]: { ...record, sortOrder } });
+}
+
+/**
+ * Applies a list editor's changes in one transaction: `upserts` are the rows
+ * it changed or added (sort orders already set), `deletedIds` the rows it
+ * removed. Rows nobody touched aren't written, so another officer's edit to
+ * one of them survives.
+ */
+async function applyChanges(key, upserts, deletedIds) {
+  await ensureMigrated();
+  if (upserts.length === 0 && deletedIds.length === 0) return;
+  const tx = kv.multi();
+  if (upserts.length > 0) tx.hset(key, byId(upserts));
+  if (deletedIds.length > 0) tx.hdel(key, ...deletedIds);
+  await tx.exec();
+}
+
+async function readHash(key) {
+  await ensureMigrated();
+  return kv.hgetall(key);
+}
 
 export async function getSemesters() {
   return (await getSharedData()).semesters;
@@ -92,47 +148,22 @@ export async function getSemester(id) {
   return semesters.find((s) => s.id === id);
 }
 
-/** `list` with `record` replacing the entry that has its id, or added at the end. */
-function upsertById(list, record) {
-  return list.some((item) => item.id === record.id)
-    ? list.map((item) => (item.id === record.id ? record : item))
-    : [...list, record];
-}
-
 export async function saveSemester(semester) {
-  const semesters = (await kv.get(SEMESTERS_KEY)) ?? [];
-  await kv.set(SEMESTERS_KEY, upsertById(semesters, semester));
+  await saveOne(KEYS.semesters, semester);
 }
 
-// Removes `id` from the semesters list in one atomic Redis-side operation,
-// refusing (without writing) if that would leave the list empty.
-//
-// This is the one place in the app that genuinely needs a Lua script instead
-// of the read-then-write pattern used everywhere else: a plain "read the
-// list, check the length, write the filtered list" has a real race between
-// the read and the write. Two officers deleting two *different* semesters at
-// nearly the same moment can each read the same 2-item list before either
-// write lands, each compute a valid-looking 1-item remainder, and both
-// proceed — verified live while building this fix (a JS-level fresh-read
-// re-check narrowed the window but did not close it; two backgrounded curl
-// requests reproduced both semesters' events/markers/contacts being wiped
-// while the semester list itself still showed one "surviving" entry with no
-// data underneath). A single EVAL runs atomically against Redis — no other
-// command can interleave with it — so it's the only way to make the guard
-// and the write indivisible without a much larger storage-model change.
+// Removes `id` from the semesters hash, refusing (without writing) if that
+// would leave none. One Lua script, so the check and the delete can't be
+// split: two officers deleting two *different* semesters at nearly the same
+// moment could otherwise each see two, each delete one, and leave none —
+// verified live on the list layout this replaced, where it wiped both
+// semesters' events, markers and contacts.
 const DELETE_SEMESTER_SCRIPT = `
-local raw = redis.call('GET', KEYS[1])
-local semesters = raw and cjson.decode(raw) or {}
-local remaining = {}
-for _, s in ipairs(semesters) do
-  if s.id ~= ARGV[1] then
-    table.insert(remaining, s)
-  end
-end
-if #remaining == 0 then
+local exists = redis.call('HEXISTS', KEYS[1], ARGV[1])
+if redis.call('HLEN', KEYS[1]) - exists == 0 then
   return 0
 end
-redis.call('SET', KEYS[1], cjson.encode(remaining))
+redis.call('HDEL', KEYS[1], ARGV[1])
 return 1
 `;
 
@@ -145,101 +176,124 @@ return 1
 // isn't "harmlessly ignored" — it makes the item, and its real cost, vanish
 // from every remaining semester's budget with no way to reach it again.
 export async function deleteSemester(id) {
-  const removed = await kv.eval(DELETE_SEMESTER_SCRIPT, [SEMESTERS_KEY], [id]);
+  await ensureMigrated();
+  const removed = await kv.eval(DELETE_SEMESTER_SCRIPT, [KEYS.semesters], [id]);
   if (!removed) {
     throw new Error("Cannot delete the only remaining semester.");
   }
-  await kv.del(eventsKey(id), gameDaysKey(id), contactsKey(id));
+  await kv.del(KEYS.events(id), KEYS.markers(id), KEYS.contacts(id));
 
-  const equipment = await getEquipmentItems();
-  const orphaned = equipment.filter((item) => item.purchasedSemesterId === id);
+  const orphaned = (await getEquipmentItems()).filter((item) => item.purchasedSemesterId === id);
   if (orphaned.length > 0) {
-    await kv.set(
-      EQUIPMENT_KEY,
-      equipment.map((item) =>
-        item.purchasedSemesterId === id ? { ...item, purchasedSemesterId: null } : item,
-      ),
+    await kv.hset(
+      KEYS.equipment,
+      byId(orphaned.map((item) => ({ ...item, purchasedSemesterId: null }))),
     );
   }
 }
 
 export async function getEvents(semesterId) {
-  return (await kv.get(eventsKey(semesterId))) ?? [];
+  return hashValues(await readHash(KEYS.events(semesterId)));
 }
 
 export async function saveEvent(event) {
-  await kv.set(eventsKey(event.semesterId), upsertById(await getEvents(event.semesterId), event));
+  await ensureMigrated();
+  await kv.hset(KEYS.events(event.semesterId), { [event.id]: event });
 }
 
-export async function deleteEvent(
-  semesterId,
-  eventId,
-) {
-  const events = await getEvents(semesterId);
-  await kv.set(
-    eventsKey(semesterId),
-    events.filter((e) => e.id !== eventId),
-  );
+export async function deleteEvent(semesterId, eventId) {
+  await ensureMigrated();
+  await kv.hdel(KEYS.events(semesterId), eventId);
 }
 
-// The Redis key still says gamedays. It holds the same records under a more
-// honest name, and renaming the key would mean migrating live data for nothing
-// a user can see — the same call made for "semester" in the other keys.
+// Still stored under the old "gamedays" name until this move to hashes; see
+// markers.js for the record shape.
 export async function getMarkers(semesterId) {
-  return normalizeMarkers(await kv.get(gameDaysKey(semesterId)));
+  return normalizeMarkers(hashValues(await readHash(KEYS.markers(semesterId))));
 }
 
-export async function saveMarkers(semesterId, markers) {
-  await kv.set(gameDaysKey(semesterId), markers);
+export async function saveMarkerChanges(semesterId, upserts, deletedIds) {
+  await applyChanges(KEYS.markers(semesterId), upserts, deletedIds);
 }
 
 export async function getContacts(semesterId) {
-  return (await kv.get(contactsKey(semesterId))) ?? [];
+  return inSortOrder(await readHash(KEYS.contacts(semesterId)));
 }
 
-export async function saveContacts(
-  semesterId,
-  contacts,
-) {
-  await kv.set(contactsKey(semesterId), contacts);
+export async function saveContactChanges(semesterId, upserts, deletedIds) {
+  await applyChanges(
+    KEYS.contacts(semesterId),
+    withSortOrders(await getContacts(semesterId), upserts),
+    deletedIds,
+  );
 }
 
 export async function getDrinkPresets() {
   return (await getSharedData()).drinkPresets;
 }
 
-export async function saveDrinkPresets(presets) {
-  await kv.set(DRINK_PRESETS_KEY, presets);
+/**
+ * `presets` maps each category the editor sent to its full set of quantities.
+ * A category with none left is deleted rather than stored empty.
+ */
+export async function saveDrinkPresetChanges(presets) {
+  await ensureMigrated();
+  const entries = Object.entries(presets);
+  const kept = entries.filter(([, quantities]) => Object.keys(quantities).length > 0);
+  const emptied = entries.filter(([, quantities]) => Object.keys(quantities).length === 0);
+  if (entries.length === 0) return;
+  const tx = kv.multi();
+  if (kept.length > 0) tx.hset(KEYS.drinkPresets, Object.fromEntries(kept));
+  if (emptied.length > 0) tx.hdel(KEYS.drinkPresets, ...emptied.map(([id]) => id));
+  await tx.exec();
 }
 
 export async function getDrinkGroups() {
   return (await getSharedData()).drinkGroups;
 }
 
-export async function saveDrinkGroups(groups) {
-  await kv.set(DRINK_GROUPS_KEY, groups);
+/** The stored catalog records, sort orders included, straight from Redis. */
+export async function getDrinkCatalogRecords() {
+  await ensureMigrated();
+  const pipeline = kv.pipeline();
+  pipeline.hgetall(KEYS.drinkGroups);
+  pipeline.hgetall(KEYS.drinkItems);
+  const [groups, items] = await pipeline.exec();
+  return { groups: hashValues(groups), items: hashValues(items) };
+}
+
+/**
+ * The Drinks tab's catalog changes, as one transaction across both hashes.
+ * Sort orders are set here: an existing group or item keeps its place, and new
+ * ones go last in the order the editor sent them.
+ */
+export async function saveDrinkCatalogChanges({ groups, items, deletedGroupIds, deletedItemIds }) {
+  const stored = await getDrinkCatalogRecords();
+  const tx = kv.multi();
+  if (groups.length > 0) tx.hset(KEYS.drinkGroups, byId(withSortOrders(stored.groups, groups)));
+  if (items.length > 0) tx.hset(KEYS.drinkItems, byId(withSortOrders(stored.items, items)));
+  if (deletedGroupIds.length > 0) tx.hdel(KEYS.drinkGroups, ...deletedGroupIds);
+  if (deletedItemIds.length > 0) tx.hdel(KEYS.drinkItems, ...deletedItemIds);
+  await tx.exec();
 }
 
 export async function addDrinkItemToGroup(groupId, item) {
-  const groups = (await kv.get(DRINK_GROUPS_KEY)) ?? [];
-  if (!groups.some((g) => g.id === groupId)) return;
-  await saveDrinkGroups(groups.map((g) => (g.id === groupId ? { ...g, items: [...g.items, item] } : g)));
+  await ensureMigrated();
+  if (!(await kv.hexists(KEYS.drinkGroups, groupId))) return;
+  await kv.hset(KEYS.drinkItems, { [item.id]: { ...item, groupId, sortOrder: Date.now() } });
 }
 
 export async function getEquipmentItems() {
-  return (await kv.get(EQUIPMENT_KEY)) ?? [];
+  return inSortOrder(await readHash(KEYS.equipment));
 }
 
 export async function saveEquipmentItem(item) {
-  await kv.set(EQUIPMENT_KEY, upsertById(await getEquipmentItems(), item));
+  await saveOne(KEYS.equipment, item);
 }
 
 export async function deleteEquipmentItem(id) {
-  const items = await getEquipmentItems();
-  await kv.set(
-    EQUIPMENT_KEY,
-    items.filter((i) => i.id !== id),
-  );
+  await ensureMigrated();
+  await kv.hdel(KEYS.equipment, id);
 }
 
 // Categories are chapter-owned data (see types/category.ts) — global, like
@@ -249,30 +303,33 @@ export async function getCategories() {
   return (await getSharedData()).categories;
 }
 
-export async function saveCategories(categories) {
-  await kv.set(CATEGORIES_KEY, categories);
+export async function saveCategoryChanges(upserts, deletedIds) {
+  await ensureMigrated();
+  const stored = inSortOrder(await kv.hgetall(KEYS.categories));
+  await applyChanges(KEYS.categories, withSortOrders(stored, upserts), deletedIds);
 }
 
 // Bundles the reads the calendar grid needs on every visit into a single
-// pipelined Redis request: this semester's events/game days, plus categories
+// pipelined Redis request: this semester's events/markers, plus categories
 // for the Legend. Deliberately excludes drink presets/groups, equipment, and
 // other semesters' event history — those only feed the closed-by-default
 // event editor and are fetched on demand by getEditorSupportingData() once it
 // actually opens.
 export async function getCalendarGridData(semesterId) {
+  await ensureMigrated();
   const pipeline = kv.pipeline();
-  pipeline.get(eventsKey(semesterId));
-  pipeline.get(gameDaysKey(semesterId));
-  pipeline.get(CATEGORIES_KEY);
+  pipeline.hgetall(KEYS.events(semesterId));
+  pipeline.hgetall(KEYS.markers(semesterId));
+  pipeline.hgetall(KEYS.categories);
 
   const [events, markers, categories] = await pipeline.exec();
 
   return {
-    events: events ?? [],
+    events: hashValues(events),
     // Normalized here rather than at the render site so a pre-existing record
     // written as {opponent} reaches the calendar already looking current.
-    markers: normalizeMarkers(markers),
-    categories: categories ?? [],
+    markers: normalizeMarkers(hashValues(markers)),
+    categories: inSortOrder(categories),
   };
 }
 
@@ -289,22 +346,24 @@ export async function getEditorSupportingData(
   semesterId,
   semesterIds,
 ) {
+  await ensureMigrated();
   const pipeline = kv.pipeline();
-  pipeline.get(DRINK_PRESETS_KEY);
-  pipeline.get(DRINK_GROUPS_KEY);
-  pipeline.get(EQUIPMENT_KEY);
+  pipeline.hgetall(KEYS.drinkPresets);
+  pipeline.hgetall(KEYS.drinkGroups);
+  pipeline.hgetall(KEYS.drinkItems);
+  pipeline.hgetall(KEYS.equipment);
   for (const id of semesterIds) {
-    pipeline.get(eventsKey(id));
+    pipeline.hgetall(KEYS.events(id));
   }
 
-  const [drinkPresets, drinkGroups, equipmentItems, ...perSemesterEvents] =
+  const [drinkPresets, drinkGroups, drinkItems, equipmentItems, ...perSemesterEvents] =
     await pipeline.exec();
 
   return {
-    allEvents: perSemesterEvents.flatMap((e) => e ?? []),
+    allEvents: perSemesterEvents.flatMap(hashValues),
     drinkPresets: drinkPresets ?? {},
-    drinkItemGroups: drinkGroups ?? [],
-    equipmentItems: equipmentItems ?? [],
+    drinkItemGroups: assembleDrinkGroups(drinkGroups, drinkItems),
+    equipmentItems: inSortOrder(equipmentItems),
   };
 }
 
@@ -355,18 +414,16 @@ export async function renameChapterInEventHosts(previousName, chapterName) {
   const semesters = await getSemesters();
   for (const semester of semesters) {
     const events = await getEvents(semester.id);
-    let changed = false;
-    const updated = events.map((event) => {
-      if (normalize(event.host) !== normalize(previousName)) return event;
-      changed = true;
-      return { ...event, host: chapterName };
-    });
-    if (changed) await kv.set(eventsKey(semester.id), updated);
+    // Only the events it renames, so an edit to any other lands untouched.
+    const updated = events
+      .filter((event) => normalize(event.host) === normalize(previousName))
+      .map((event) => ({ ...event, host: chapterName }));
+    if (updated.length > 0) await kv.hset(KEYS.events(semester.id), byId(updated));
   }
 }
 
 export async function saveBrandingSettings({ chapterName, colors, orgNoun, periodNoun, appTitle: title, timeZone }) {
-  await kv.set(BRANDING_KEY, { chapterName, colors, orgNoun, periodNoun, appTitle: title, timeZone });
+  await kv.set(KEYS.branding, { chapterName, colors, orgNoun, periodNoun, appTitle: title, timeZone });
 }
 
 // Whether the "get the most out of your calendar" checklist on the Calendar
@@ -382,94 +439,32 @@ export async function isOnboardingChecklistDismissed() {
 }
 
 export async function dismissOnboardingChecklist() {
-  await kv.set(ONBOARDING_KEY, true);
+  await kv.set(KEYS.onboardingDismissed, true);
 }
 
-// Merges the legacy customDrinkItems list into the seeded groups, matching by
-// group label the way the old merge did. A custom item whose label matches no
-// seeded group gets its own new group appended, so nothing is dropped. Custom
-// items already carry UUID ids from when they were created — reuse them so
-// any name-keyed presets migrated in the same pass stay attached.
-function buildInitialDrinkGroups(customItems) {
-  const groups = DEFAULT_DRINK_GROUPS.map((group) => ({
-    ...group,
-    items: group.items.map((item) => ({ ...item })),
-  }));
-  for (const custom of customItems) {
-    const item = {
-      id: custom.id ?? crypto.randomUUID(),
-      name: custom.name,
-      price: custom.price,
-    };
-    const group = groups.find((g) => g.label === custom.group);
-    if (group) {
-      group.items.push(item);
-    } else {
-      groups.push({ id: crypto.randomUUID(), label: custom.group, items: [item] });
-    }
-  }
-  return groups;
-}
-
-// Backfills the defaults the app can't function without — an event has to pick
-// a category from somewhere, and the Drinks tab needs a catalog and presets to
-// autofill from. Deliberately does NOT create a semester: a deployment with no
-// semesters is one that hasn't been through /setup yet, and inventing a
-// fictional semester there is what used to leave new chapters stuck with a
-// hardcoded "Example Semester" they couldn't rename. Returns the semester list
-// since every caller needs it right after. Once this has run on a warm
-// instance later calls skip the backfill reads entirely.
+// The gate every app page goes through (via requireSemesters). The defaults
+// an event and the Drinks tab can't do without (categories, a drink catalog
+// and presets) are written by the migration on a brand-new deployment, the
+// same way it converts an older one. Deliberately does NOT create a
+// semester: a deployment with no semesters is one that hasn't been through
+// /setup yet, and inventing a fictional semester there is what used to leave
+// new chapters stuck with a hardcoded "Example Semester" they couldn't
+// rename. Returns the semester list since every caller needs it right after.
+//
+// Once per production instance it also deletes the old whole-list keys,
+// when the week they're kept as a backup is up. A failure there never blocks
+// the page.
 export async function ensureDefaults() {
   const semesters = await getSemesters();
-  if (seeded) return semesters;
-
-  if ((await kv.get(CATEGORIES_KEY)) === null) {
-    await kv.set(CATEGORIES_KEY, STARTER_CATEGORIES);
-  }
-
-  // Materializes the drinkGroups catalog: seeded defaults merged with any
-  // legacy customDrinkItems (pre-Drinks-tab deployments), and in the same
-  // pass re-keys existing drinkPresets from item names to item ids. Must run
-  // BEFORE the presets seed below — a fresh deploy has to seed the id-keyed
-  // DEFAULT_DRINK_PRESETS, and a legacy deploy has to migrate its name-keyed
-  // presets before the null-check would skip them. The NX write matters: two
-  // cold instances can both see drinkGroups === null, and if the loser re-ran
-  // the name→id re-key against presets the winner already migrated, it would
-  // find zero name matches and wipe every preset. Only the instance whose
-  // SET NX landed does the re-key; keys that already look like item ids are
-  // kept as a further idempotence guard.
-  if ((await kv.get(DRINK_GROUPS_KEY)) === null) {
-    const customItems = (await kv.get(CUSTOM_DRINK_ITEMS_KEY)) ?? [];
-    const groups = buildInitialDrinkGroups(customItems);
-    const wasSet = await kv.set(DRINK_GROUPS_KEY, groups, { nx: true });
-
-    if (wasSet) {
-      const presets = await kv.get(DRINK_PRESETS_KEY);
-      if (presets !== null) {
-        const items = groups.flatMap((g) => g.items);
-        const idByName = new Map(items.map((item) => [item.name, item.id]));
-        const knownIds = new Set(items.map((item) => item.id));
-        const migrated = {};
-        for (const [categoryId, quantities] of Object.entries(presets)) {
-          const migratedQuantities = {};
-          for (const [key, qty] of Object.entries(quantities)) {
-            const itemId = knownIds.has(key) ? key : idByName.get(key);
-            if (itemId) migratedQuantities[itemId] = qty;
-          }
-          if (Object.keys(migratedQuantities).length > 0) {
-            migrated[categoryId] = migratedQuantities;
-          }
-        }
-        await kv.set(DRINK_PRESETS_KEY, migrated);
-      }
+  if (!legacyChecked) {
+    legacyChecked = true;
+    try {
+      await deleteLegacyKeys(kv);
+    } catch (error) {
+      legacyChecked = false;
+      console.error("Couldn't delete the old data keys; will retry.", error);
     }
   }
-
-  if ((await kv.get(DRINK_PRESETS_KEY)) === null) {
-    await kv.set(DRINK_PRESETS_KEY, DEFAULT_DRINK_PRESETS);
-  }
-
-  seeded = true;
   return semesters;
 }
 
@@ -514,15 +509,17 @@ export async function seedExampleData(semester, chapterName) {
     semesterId: semester.id,
     date: shift(m.date),
   }));
-  const contacts = STARTER_CONTACTS.map((c) => ({
+  const contacts = STARTER_CONTACTS.map((c, sortOrder) => ({
     ...c,
+    sortOrder,
     semesterId: semester.id,
     meetingDate: c.meetingDate ? shift(c.meetingDate) : null,
   }));
 
-  await Promise.all([
-    kv.set(eventsKey(semester.id), events),
-    kv.set(gameDaysKey(semester.id), markers),
-    kv.set(contactsKey(semester.id), contacts),
-  ]);
+  await ensureMigrated();
+  const tx = kv.multi();
+  tx.hset(KEYS.events(semester.id), byId(events));
+  tx.hset(KEYS.markers(semester.id), byId(markers));
+  tx.hset(KEYS.contacts(semester.id), byId(contacts));
+  await tx.exec();
 }

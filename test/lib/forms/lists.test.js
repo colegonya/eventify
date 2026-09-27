@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { parseCategoriesForm, parseContactsForm, parseMarkersForm } from "@/lib/forms/lists";
+import { parseCategoriesForm, parseContactsForm, parseDeletedRows, parseMarkersForm } from "@/lib/forms/lists";
+
+const form = (entries) => {
+  const data = new FormData();
+  for (const [key, value] of entries) data.append(key, value);
+  return data;
+};
 
 const rows = (keyed) => {
   const data = new FormData();
@@ -88,5 +94,20 @@ describe("parseMarkersForm", () => {
     expect(parseMarkersForm(rows([marker("m1", "2026-13-01", "Finals")]), "fall", new Set()).error).toBe(
       'The date for "Finals" isn\'t a real date.',
     );
+  });
+});
+
+describe("parseDeletedRows", () => {
+  it("reads the removed row ids, stripping a prefix when given", () => {
+    const removed = form([["deletedRow", "c1"], ["deletedRow", "c2"]]);
+    expect(parseDeletedRows(removed).data).toEqual(["c1", "c2"]);
+
+    const catalog = form([["deletedRow", "g:beer"], ["deletedRow", "i:lager"]]);
+    expect(parseDeletedRows(catalog, "g:").data).toEqual(["beer"]);
+    expect(parseDeletedRows(catalog, "i:").data).toEqual(["lager"]);
+  });
+
+  it("refuses an empty id", () => {
+    expect(parseDeletedRows(form([["deletedRow", ""]])).ok).toBe(false);
   });
 });

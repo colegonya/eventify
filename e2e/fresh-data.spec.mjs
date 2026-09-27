@@ -26,22 +26,28 @@ test("a chapter name saved elsewhere shows on the next page load", async ({ page
 
 test("a category added elsewhere shows on the next page load", async ({ page }) => {
   const redis = testRedis();
-  const original = await redis.get("categories");
   const label = uniqueName("E2E Category").slice(0, 60);
 
   try {
     await page.goto("/categories");
     await expect(page.getByLabel("Category name").first()).toBeVisible();
 
-    await redis.set("categories", [
-      ...original,
-      { id: "e2e-fresh", label, color: "#123456", netsRevenue: false, excludeFromBudgetTotal: false, isOtherOrgCategory: false },
-    ]);
+    await redis.hset("v2:categories", {
+      "e2e-fresh": {
+        id: "e2e-fresh",
+        label,
+        color: "#123456",
+        netsRevenue: false,
+        excludeFromBudgetTotal: false,
+        isOtherOrgCategory: false,
+        sortOrder: Date.now(),
+      },
+    });
     await page.reload();
 
     const labels = await page.getByLabel("Category name").evaluateAll((inputs) => inputs.map((i) => i.value));
     expect(labels).toContain(label);
   } finally {
-    await redis.set("categories", original);
+    await redis.hdel("v2:categories", "e2e-fresh");
   }
 });
