@@ -4,19 +4,22 @@ function sumActualSpend(event) {
 
 export function computeContribution(input) {
   const shareFactor = input.hostShareFraction ?? 1;
-  const revenueCents = input.revenueCents ?? 0;
+  // Revenue is entered for the whole event, same as spend, so the host only
+  // nets its own share of it.
+  const revenueCents = input.netsRevenue ? (input.revenueCents ?? 0) * shareFactor : 0;
+  // Door money only offsets actual spend once the event has some, otherwise a
+  // projected fundraiser drives actual spend negative before it happens.
+  const hasActualSpend = input.hasActualSpend ?? input.actualSpendCents > 0;
+  const actualRevenueCents = hasActualSpend ? revenueCents : 0;
 
-  let expectedCost = (input.expectedSpendCents ?? 0) * shareFactor;
-  let actualCost = input.actualSpendCents * shareFactor;
-
-  if (input.netsRevenue) {
-    expectedCost -= revenueCents;
-    actualCost -= revenueCents;
-  }
+  const expectedCostCents = (input.expectedSpendCents ?? 0) * shareFactor;
+  const actualCostCents = input.actualSpendCents * shareFactor;
 
   return {
-    expectedContributionCents: expectedCost,
-    actualContributionCents: actualCost,
+    expectedContributionCents: expectedCostCents - revenueCents,
+    actualContributionCents: actualCostCents - actualRevenueCents,
+    expectedRevenueCents: revenueCents,
+    actualRevenueCents,
   };
 }
 
@@ -32,6 +35,7 @@ export function computeEventContribution(
     netsRevenue: category?.netsRevenue ?? false,
     expectedSpendCents: baseExpectedCents,
     actualSpendCents: baseActualCents,
+    hasActualSpend: event.actualSpend.length > 0,
     hostShareFraction: event.hostShareFraction,
     revenueCents: event.revenueCents,
   });
@@ -42,6 +46,8 @@ export function computeEventContribution(
     baseActualCents,
     expectedContributionCents: contribution.expectedContributionCents,
     actualContributionCents: contribution.actualContributionCents,
+    expectedRevenueCents: contribution.expectedRevenueCents,
+    actualRevenueCents: contribution.actualRevenueCents,
   };
 }
 
@@ -107,6 +113,8 @@ export function computeEquipmentContribution(item) {
     baseActualCents,
     expectedContributionCents: baseExpectedCents ?? 0,
     actualContributionCents: baseActualCents,
+    expectedRevenueCents: 0,
+    actualRevenueCents: 0,
   };
 }
 
@@ -119,6 +127,10 @@ export function computeSemesterBudget(
   const perEquipment = new Map();
   let expectedSpendCents = 0;
   let actualSpendCents = 0;
+  // How much of each total is revenue netted out, so the page can show the
+  // cost behind a net figure instead of a number that shrinks unexplained.
+  let expectedRevenueCents = 0;
+  let actualRevenueCents = 0;
 
   for (const event of events) {
     const contribution = computeEventContribution(event, categoriesById);
@@ -126,6 +138,8 @@ export function computeSemesterBudget(
     if (!isExcludedFromBudgetTotal(categoriesById.get(event.category))) {
       expectedSpendCents += contribution.expectedContributionCents;
       actualSpendCents += contribution.actualContributionCents;
+      expectedRevenueCents += contribution.expectedRevenueCents;
+      actualRevenueCents += contribution.actualRevenueCents;
     }
   }
 
@@ -136,7 +150,14 @@ export function computeSemesterBudget(
     actualSpendCents += contribution.actualContributionCents;
   }
 
-  return { expectedSpendCents, actualSpendCents, perEvent, perEquipment };
+  return {
+    expectedSpendCents,
+    actualSpendCents,
+    expectedRevenueCents,
+    actualRevenueCents,
+    perEvent,
+    perEquipment,
+  };
 }
 
 export function alertMessage(alert) {

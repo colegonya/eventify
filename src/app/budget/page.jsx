@@ -216,6 +216,7 @@ export default async function BudgetPage({
           <div className="tabular-figures mt-1 text-3xl font-bold text-brand-ink">
             {centsToDisplay(budget.expectedSpendCents)}
           </div>
+          <RevenueBreakdown netCents={budget.expectedSpendCents} revenueCents={budget.expectedRevenueCents} />
           <div className="tabular-figures mt-1 text-xs text-brand-ink/75">
             {expectedPct}% of {centsToDisplay(semester.maxBudgetCents)} cap
           </div>
@@ -234,6 +235,7 @@ export default async function BudgetPage({
           <div className="tabular-figures mt-1 text-3xl font-bold text-brand-ink">
             {centsToDisplay(budget.actualSpendCents)}
           </div>
+          <RevenueBreakdown netCents={budget.actualSpendCents} revenueCents={budget.actualRevenueCents} />
           <div className="tabular-figures mt-1 text-xs text-brand-ink/75">
             {actualPct}% of {centsToDisplay(semester.maxBudgetCents)} cap
           </div>
@@ -523,5 +525,16 @@ export default async function BudgetPage({
       </div>
     </div>
     </EquipmentEditorProvider>
+  );
+}
+
+// Revenue-netting categories (a club party charging at the door) lower the
+// spend totals, so spell out the cost and revenue behind a net figure.
+function RevenueBreakdown({ netCents, revenueCents }) {
+  if (!revenueCents) return null;
+  return (
+    <div className="tabular-figures mt-1 text-xs text-brand-ink/75">
+      Net: {centsToDisplay(netCents + revenueCents)} cost − {centsToDisplay(revenueCents)} revenue
+    </div>
   );
 }
