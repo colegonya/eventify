@@ -56,18 +56,20 @@ export function pctOfCap(cents, maxBudgetCents) {
 }
 
 /**
- * What's left of the cap once committed spend is accounted for — the number an
- * officer is actually asking for when they open the Budget page.
+ * What's left of the cap once spend is accounted for — the number an officer
+ * is actually asking for when they open the Budget page.
  *
- * Measured against expected rather than actual spend: money promised to an
- * event that hasn't happened yet is already gone for planning purposes, and
- * answering with actual spend would read as headroom the chapter doesn't have.
+ * The page asks it twice. Against expected spend it is the planning figure:
+ * money promised to an event that hasn't happened yet is already gone. Against
+ * actual spend it is the cash figure: what the chapter has really paid out so
+ * far. Reading the actual one alone would show headroom the plan has already
+ * spoken for, so the page shows both side by side.
  * Goes negative past the cap, which is the point; callers style it.
  *
  * Null when no cap is set, since "remaining" means nothing without one.
  */
-export function remainingUnderCap(expectedSpendCents, maxBudgetCents) {
-  return maxBudgetCents > 0 ? maxBudgetCents - expectedSpendCents : null;
+export function remainingUnderCap(spendCents, maxBudgetCents) {
+  return maxBudgetCents > 0 ? maxBudgetCents - spendCents : null;
 }
 
 // A category's own excludeFromBudgetTotal flag drives this now — see
