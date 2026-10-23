@@ -44,15 +44,61 @@ describe("computeSemesterBudget", () => {
     expect(budget.perEvent.get("rush").expectedContributionCents).toBe(70000);
   });
 
-  it("subtracts revenue from actual spend too, even before any cost is recorded", () => {
-    // A single revenueCents field nets against BOTH expected and actual, so a
-    // projected fundraiser drives reported actual spend negative before a dollar
-    // is collected. Pinning it here so splitting the field stays a deliberate change.
-    const events = [event({ id: "philo", category: "philanthropy", expectedSpendCents: 10000, revenueCents: 10000 })];
+  it("leaves actual spend alone until the event has actual spend logged", () => {
+    const events = [event({ id: "philo", category: "philanthropy", expectedSpendCents: 150000, revenueCents: 60000 })];
 
     const budget = computeSemesterBudget(events, categoriesById);
 
-    expect(budget.actualSpendCents).toBe(-10000);
+    expect(budget.expectedSpendCents).toBe(90000);
+    expect(budget.expectedRevenueCents).toBe(60000);
+    expect(budget.actualSpendCents).toBe(0);
+    expect(budget.actualRevenueCents).toBe(0);
+  });
+
+  it("nets revenue against actual spend once any is logged", () => {
+    const events = [
+      event({
+        id: "philo",
+        category: "philanthropy",
+        expectedSpendCents: 150000,
+        revenueCents: 60000,
+        actualSpend: [{ amountCents: 140000 }],
+      }),
+    ];
+
+    const budget = computeSemesterBudget(events, categoriesById);
+
+    expect(budget.actualSpendCents).toBe(80000);
+    expect(budget.actualRevenueCents).toBe(60000);
+  });
+
+  it("applies the co-host share to revenue as well as cost", () => {
+    const events = [
+      event({
+        id: "philo",
+        category: "philanthropy",
+        expectedSpendCents: 150000,
+        revenueCents: 60000,
+        hostShareFraction: 0.5,
+        actualSpend: [{ amountCents: 150000 }],
+      }),
+    ];
+
+    const budget = computeSemesterBudget(events, categoriesById);
+
+    // Half of $1,500 cost minus half of $600 revenue.
+    expect(budget.expectedSpendCents).toBe(45000);
+    expect(budget.actualSpendCents).toBe(45000);
+    expect(budget.expectedRevenueCents).toBe(30000);
+  });
+
+  it("ignores revenue on categories that don't net it", () => {
+    const events = [event({ id: "mixer", category: "mixer", expectedSpendCents: 50000, revenueCents: 20000 })];
+
+    const budget = computeSemesterBudget(events, categoriesById);
+
+    expect(budget.expectedSpendCents).toBe(50000);
+    expect(budget.expectedRevenueCents).toBe(0);
   });
 });
 

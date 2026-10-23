@@ -442,7 +442,7 @@ export function EventForm({
               />
             </label>
             <label className={label}>
-              Revenue ($) <span className={sublabel}>(revenue-netting categories only)</span>
+              Revenue ($) <span className={sublabel}>(whole event, revenue-netting categories only)</span>
               <input
                 type="number"
                 step="0.01"
