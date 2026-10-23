@@ -111,6 +111,7 @@ export default async function BudgetPage({
   };
   const expectedPie = pieFor("expectedContributionCents");
   const actualPie = pieFor("actualContributionCents");
+  const pairedPies = expectedPie.totalCents > 0 && actualPie.totalCents > 0;
 
   const rows = sortedEvents.map((event) => {
     const contribution = budget.perEvent.get(event.id);
@@ -270,16 +271,22 @@ export default async function BudgetPage({
         />
       </div>
 
-      <BudgetCategoryPieChart
-        slices={expectedPie.slices}
-        totalCents={expectedPie.totalCents}
-        spendLabel="expected spend"
-      />
-      <BudgetCategoryPieChart
-        slices={actualPie.slices}
-        totalCents={actualPie.totalCents}
-        spendLabel="actual spend"
-      />
+      {/* Side by side from lg up when both have data. A chart with nothing to
+          show renders nothing, so a lone chart keeps the full width. */}
+      <div className={`grid grid-cols-1 gap-4 ${pairedPies ? "lg:grid-cols-2" : ""}`}>
+        <BudgetCategoryPieChart
+          slices={expectedPie.slices}
+          totalCents={expectedPie.totalCents}
+          spendLabel="expected spend"
+          paired={pairedPies}
+        />
+        <BudgetCategoryPieChart
+          slices={actualPie.slices}
+          totalCents={actualPie.totalCents}
+          spendLabel="actual spend"
+          paired={pairedPies}
+        />
+      </div>
 
       {alerts.length > 0 && (
         <details className="group overflow-hidden rounded-md border border-amber-300/70 bg-amber-50/60 shadow-[var(--shadow-resting)] open:bg-amber-50">

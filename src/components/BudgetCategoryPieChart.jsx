@@ -72,8 +72,10 @@ function describeRoundedSegment(startDeg, endDeg) {
 }
 
 // spendLabel names the figure the chart splits up ("expected spend", "actual
-// spend"), lowercase so it reads mid-sentence in the legend.
-export function BudgetCategoryPieChart({ slices, totalCents, spendLabel }) {
+// spend"), lowercase so it reads mid-sentence in the legend. paired means the
+// chart shares its row with another from lg up, so the legend moves under the
+// donut there instead of beside it.
+export function BudgetCategoryPieChart({ slices, totalCents, spendLabel, paired = false }) {
   const [activeIndex, setActiveIndex] = useState(null);
 
   if (slices.length === 0 || totalCents <= 0) {
@@ -138,7 +140,11 @@ export function BudgetCategoryPieChart({ slices, totalCents, spendLabel }) {
   const active = activeIndex !== null ? arcs[activeIndex] : null;
 
   return (
-    <div className="flex flex-col items-center gap-4 rounded-md border border-paper-line p-5 shadow-[var(--shadow-resting)] sm:flex-row sm:items-stretch sm:justify-center">
+    <div
+      className={`flex flex-col items-center gap-4 rounded-md border border-paper-line p-5 shadow-[var(--shadow-resting)] sm:flex-row sm:items-stretch sm:justify-center ${
+        paired ? "lg:flex-col lg:items-center" : ""
+      }`}
+    >
       <svg
         viewBox={`0 0 ${SIZE} ${SIZE}`}
         className="aspect-square w-full max-w-[510px] shrink-0"
