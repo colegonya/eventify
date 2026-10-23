@@ -71,37 +71,46 @@ export default async function BudgetPage({
     .sort((a, b) => a.startDate.localeCompare(b.startDate));
   const eventsById = new Map(events.map((e) => [e.id, e]));
 
-  const categoryTotals = new Map();
-  for (const event of events) {
-    if (categoriesById.get(event.category)?.excludeFromBudgetTotal) continue;
-    const contribution = budget.perEvent.get(event.id);
-    if (!contribution) continue;
-    const current = categoryTotals.get(event.category) ?? 0;
-    categoryTotals.set(event.category, current + contribution.expectedContributionCents);
-  }
-  const equipmentExpectedTotalCents = equipment.reduce(
-    (sum, item) => sum + (budget.perEquipment.get(item.id)?.expectedContributionCents ?? 0),
-    0,
-  );
+  // One donut per spend figure, built the same way: each category's netted
+  // contribution plus equipment, keeping only slices that take up real spend.
+  const pieFor = (contributionKey) => {
+    const categoryTotals = new Map();
+    for (const event of events) {
+      if (categoriesById.get(event.category)?.excludeFromBudgetTotal) continue;
+      const contribution = budget.perEvent.get(event.id);
+      if (!contribution) continue;
+      const current = categoryTotals.get(event.category) ?? 0;
+      categoryTotals.set(event.category, current + contribution[contributionKey]);
+    }
+    const equipmentTotalCents = equipment.reduce(
+      (sum, item) => sum + (budget.perEquipment.get(item.id)?.[contributionKey] ?? 0),
+      0,
+    );
 
-  const pieSlices = categories
-    .map((category) => ({
-      category: category.label,
-      amountCents: categoryTotals.get(category.id) ?? 0,
-      color: category.color,
-    }))
-    .concat(
-      equipmentExpectedTotalCents > 0
-        ? [{ category: "Equipment", amountCents: equipmentExpectedTotalCents, color: EQUIPMENT_COLOR }]
-        : [],
-    )
-    .filter((c) => c.amountCents > 0)
-    .sort((a, b) => b.amountCents - a.amountCents);
-  const pieTotalCents = pieSlices.reduce((sum, c) => sum + c.amountCents, 0);
-  const pieSlicesWithPct = pieSlices.map((c) => ({
-    ...c,
-    pct: pieTotalCents > 0 ? (c.amountCents / pieTotalCents) * 100 : 0,
-  }));
+    const slices = categories
+      .map((category) => ({
+        category: category.label,
+        amountCents: categoryTotals.get(category.id) ?? 0,
+        color: category.color,
+      }))
+      .concat(
+        equipmentTotalCents > 0
+          ? [{ category: "Equipment", amountCents: equipmentTotalCents, color: EQUIPMENT_COLOR }]
+          : [],
+      )
+      .filter((c) => c.amountCents > 0)
+      .sort((a, b) => b.amountCents - a.amountCents);
+    const totalCents = slices.reduce((sum, c) => sum + c.amountCents, 0);
+    return {
+      slices: slices.map((c) => ({
+        ...c,
+        pct: totalCents > 0 ? (c.amountCents / totalCents) * 100 : 0,
+      })),
+      totalCents,
+    };
+  };
+  const expectedPie = pieFor("expectedContributionCents");
+  const actualPie = pieFor("actualContributionCents");
 
   const rows = sortedEvents.map((event) => {
     const contribution = budget.perEvent.get(event.id);
@@ -261,7 +270,16 @@ export default async function BudgetPage({
         />
       </div>
 
-      <BudgetCategoryPieChart slices={pieSlicesWithPct} totalCents={pieTotalCents} />
+      <BudgetCategoryPieChart
+        slices={expectedPie.slices}
+        totalCents={expectedPie.totalCents}
+        spendLabel="expected spend"
+      />
+      <BudgetCategoryPieChart
+        slices={actualPie.slices}
+        totalCents={actualPie.totalCents}
+        spendLabel="actual spend"
+      />
 
       {alerts.length > 0 && (
         <details className="group overflow-hidden rounded-md border border-amber-300/70 bg-amber-50/60 shadow-[var(--shadow-resting)] open:bg-amber-50">

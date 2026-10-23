@@ -71,7 +71,9 @@ function describeRoundedSegment(startDeg, endDeg) {
   ].join(" ");
 }
 
-export function BudgetCategoryPieChart({ slices, totalCents }) {
+// spendLabel names the figure the chart splits up ("expected spend", "actual
+// spend"), lowercase so it reads mid-sentence in the legend.
+export function BudgetCategoryPieChart({ slices, totalCents, spendLabel }) {
   const [activeIndex, setActiveIndex] = useState(null);
 
   if (slices.length === 0 || totalCents <= 0) {
@@ -192,12 +194,14 @@ export function BudgetCategoryPieChart({ slices, totalCents }) {
               {centsToDisplay(active.amountCents)}
             </div>
             <div className="text-xs text-brand-ink/75">
-              {Math.round(active.pct)}% of expected spend
+              {Math.round(active.pct)}% of {spendLabel}
             </div>
           </>
         ) : (
           <>
-            <div className="text-sm text-brand-ink/75">Expected spend by category</div>
+            <div className="text-sm text-brand-ink/75">
+              {spendLabel.charAt(0).toUpperCase() + spendLabel.slice(1)} by category
+            </div>
             <div className="tabular-figures text-2xl font-bold text-brand-ink">
               {centsToDisplay(totalCents)}
             </div>
