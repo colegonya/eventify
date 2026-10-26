@@ -58,8 +58,8 @@ export default async function BudgetPage({
 
   const expectedPct = pctOfCap(budget.expectedSpendCents, semester.maxBudgetCents) ?? 0;
   const actualPct = pctOfCap(budget.actualSpendCents, semester.maxBudgetCents) ?? 0;
-  const remainingCents = remainingUnderCap(budget.expectedSpendCents, semester.maxBudgetCents);
-  const remainingPct = Math.max(0, 100 - expectedPct);
+  const expectedRemainingCents = remainingUnderCap(budget.expectedSpendCents, semester.maxBudgetCents);
+  const actualRemainingCents = remainingUnderCap(budget.actualSpendCents, semester.maxBudgetCents);
 
   const sortedEvents = events
     .filter(
@@ -71,37 +71,47 @@ export default async function BudgetPage({
     .sort((a, b) => a.startDate.localeCompare(b.startDate));
   const eventsById = new Map(events.map((e) => [e.id, e]));
 
-  const categoryTotals = new Map();
-  for (const event of events) {
-    if (categoriesById.get(event.category)?.excludeFromBudgetTotal) continue;
-    const contribution = budget.perEvent.get(event.id);
-    if (!contribution) continue;
-    const current = categoryTotals.get(event.category) ?? 0;
-    categoryTotals.set(event.category, current + contribution.expectedContributionCents);
-  }
-  const equipmentExpectedTotalCents = equipment.reduce(
-    (sum, item) => sum + (budget.perEquipment.get(item.id)?.expectedContributionCents ?? 0),
-    0,
-  );
+  // One donut per spend figure, built the same way: each category's netted
+  // contribution plus equipment, keeping only slices that take up real spend.
+  const pieFor = (contributionKey) => {
+    const categoryTotals = new Map();
+    for (const event of events) {
+      if (categoriesById.get(event.category)?.excludeFromBudgetTotal) continue;
+      const contribution = budget.perEvent.get(event.id);
+      if (!contribution) continue;
+      const current = categoryTotals.get(event.category) ?? 0;
+      categoryTotals.set(event.category, current + contribution[contributionKey]);
+    }
+    const equipmentTotalCents = equipment.reduce(
+      (sum, item) => sum + (budget.perEquipment.get(item.id)?.[contributionKey] ?? 0),
+      0,
+    );
 
-  const pieSlices = categories
-    .map((category) => ({
-      category: category.label,
-      amountCents: categoryTotals.get(category.id) ?? 0,
-      color: category.color,
-    }))
-    .concat(
-      equipmentExpectedTotalCents > 0
-        ? [{ category: "Equipment", amountCents: equipmentExpectedTotalCents, color: EQUIPMENT_COLOR }]
-        : [],
-    )
-    .filter((c) => c.amountCents > 0)
-    .sort((a, b) => b.amountCents - a.amountCents);
-  const pieTotalCents = pieSlices.reduce((sum, c) => sum + c.amountCents, 0);
-  const pieSlicesWithPct = pieSlices.map((c) => ({
-    ...c,
-    pct: pieTotalCents > 0 ? (c.amountCents / pieTotalCents) * 100 : 0,
-  }));
+    const slices = categories
+      .map((category) => ({
+        category: category.label,
+        amountCents: categoryTotals.get(category.id) ?? 0,
+        color: category.color,
+      }))
+      .concat(
+        equipmentTotalCents > 0
+          ? [{ category: "Equipment", amountCents: equipmentTotalCents, color: EQUIPMENT_COLOR }]
+          : [],
+      )
+      .filter((c) => c.amountCents > 0)
+      .sort((a, b) => b.amountCents - a.amountCents);
+    const totalCents = slices.reduce((sum, c) => sum + c.amountCents, 0);
+    return {
+      slices: slices.map((c) => ({
+        ...c,
+        pct: totalCents > 0 ? (c.amountCents / totalCents) * 100 : 0,
+      })),
+      totalCents,
+    };
+  };
+  const expectedPie = pieFor("expectedContributionCents");
+  const actualPie = pieFor("actualContributionCents");
+  const pairedPies = expectedPie.totalCents > 0 && actualPie.totalCents > 0;
 
   const rows = sortedEvents.map((event) => {
     const contribution = budget.perEvent.get(event.id);
@@ -208,7 +218,7 @@ export default async function BudgetPage({
         </form>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-md border border-paper-line bg-background p-5 shadow-[var(--shadow-resting)]">
           <div className="text-xs font-semibold tracking-wide text-brand-ink/60 uppercase">
             {words.period} Expected Spend
@@ -247,37 +257,36 @@ export default async function BudgetPage({
           </div>
         </div>
 
-        {/* The question an officer actually opens this page to answer. The
-            figure existed already, but only inside the event editor, so
-            reading it off the Budget page meant doing the subtraction. */}
-        {remainingCents !== null && (
-          <div className="rounded-md border border-paper-line bg-background p-5 shadow-[var(--shadow-resting)]">
-            <div className="text-xs font-semibold tracking-wide text-brand-ink/60 uppercase">
-              {remainingCents < 0 ? "Over Cap" : "Left to Spend"}
-            </div>
-            <div
-              className={`tabular-figures mt-1 text-3xl font-bold ${
-                remainingCents < 0 ? "text-red-600" : "text-brand-ink"
-              }`}
-            >
-              {centsToDisplay(Math.abs(remainingCents))}
-            </div>
-            <div className="tabular-figures mt-1 text-xs text-brand-ink/75">
-              {remainingCents < 0
-                ? `${expectedPct - 100}% past the cap`
-                : `${remainingPct}% of the cap still open`}
-            </div>
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-paper-line">
-              <div
-                className={`h-full ${remainingCents < 0 ? "bg-red-600" : "bg-brand-primary"}`}
-                style={{ width: `${remainingCents < 0 ? 100 : remainingPct}%` }}
-              />
-            </div>
-          </div>
-        )}
+        {/* The question an officer actually opens this page to answer, asked
+            two ways: against the plan, and against what's really been paid. */}
+        <LeftToSpendCard
+          label="Expected"
+          remainingCents={expectedRemainingCents}
+          spentPct={expectedPct}
+        />
+        <LeftToSpendCard
+          label="Actual"
+          remainingCents={actualRemainingCents}
+          spentPct={actualPct}
+        />
       </div>
 
-      <BudgetCategoryPieChart slices={pieSlicesWithPct} totalCents={pieTotalCents} />
+      {/* Side by side from lg up when both have data. A chart with nothing to
+          show renders nothing, so a lone chart keeps the full width. */}
+      <div className={`grid grid-cols-1 gap-4 ${pairedPies ? "lg:grid-cols-2" : ""}`}>
+        <BudgetCategoryPieChart
+          slices={expectedPie.slices}
+          totalCents={expectedPie.totalCents}
+          spendLabel="expected spend"
+          paired={pairedPies}
+        />
+        <BudgetCategoryPieChart
+          slices={actualPie.slices}
+          totalCents={actualPie.totalCents}
+          spendLabel="actual spend"
+          paired={pairedPies}
+        />
+      </div>
 
       {alerts.length > 0 && (
         <details className="group overflow-hidden rounded-md border border-amber-300/70 bg-amber-50/60 shadow-[var(--shadow-resting)] open:bg-amber-50">
@@ -535,6 +544,35 @@ function RevenueBreakdown({ netCents, revenueCents }) {
   return (
     <div className="tabular-figures mt-1 text-xs text-brand-ink/75">
       Net: {centsToDisplay(netCents + revenueCents)} cost − {centsToDisplay(revenueCents)} revenue
+    </div>
+  );
+}
+
+function LeftToSpendCard({ label, remainingCents, spentPct }) {
+  if (remainingCents === null) return null;
+  const over = remainingCents < 0;
+  const remainingPct = Math.max(0, 100 - spentPct);
+  return (
+    <div className="rounded-md border border-paper-line bg-background p-5 shadow-[var(--shadow-resting)]">
+      <div className="text-xs font-semibold tracking-wide text-brand-ink/60 uppercase">
+        {over ? "Over Cap" : "Left to Spend"} ({label})
+      </div>
+      <div
+        className={`tabular-figures mt-1 text-3xl font-bold ${
+          over ? "text-red-600" : "text-brand-ink"
+        }`}
+      >
+        {centsToDisplay(Math.abs(remainingCents))}
+      </div>
+      <div className="tabular-figures mt-1 text-xs text-brand-ink/75">
+        {over ? `${spentPct - 100}% past the cap` : `${remainingPct}% of the cap still open`}
+      </div>
+      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-paper-line">
+        <div
+          className={`h-full ${over ? "bg-red-600" : "bg-brand-primary"}`}
+          style={{ width: `${over ? 100 : Math.min(remainingPct, 100)}%` }}
+        />
+      </div>
     </div>
   );
 }

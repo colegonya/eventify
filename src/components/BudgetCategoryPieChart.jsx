@@ -71,7 +71,11 @@ function describeRoundedSegment(startDeg, endDeg) {
   ].join(" ");
 }
 
-export function BudgetCategoryPieChart({ slices, totalCents }) {
+// spendLabel names the figure the chart splits up ("expected spend", "actual
+// spend"), lowercase so it reads mid-sentence in the legend. paired means the
+// chart shares its row with another from lg up, so the legend moves under the
+// donut there instead of beside it.
+export function BudgetCategoryPieChart({ slices, totalCents, spendLabel, paired = false }) {
   const [activeIndex, setActiveIndex] = useState(null);
 
   if (slices.length === 0 || totalCents <= 0) {
@@ -136,7 +140,11 @@ export function BudgetCategoryPieChart({ slices, totalCents }) {
   const active = activeIndex !== null ? arcs[activeIndex] : null;
 
   return (
-    <div className="flex flex-col items-center gap-4 rounded-md border border-paper-line p-5 shadow-[var(--shadow-resting)] sm:flex-row sm:items-stretch sm:justify-center">
+    <div
+      className={`flex flex-col items-center gap-4 rounded-md border border-paper-line p-5 shadow-[var(--shadow-resting)] sm:flex-row sm:items-stretch sm:justify-center ${
+        paired ? "lg:flex-col lg:items-center" : ""
+      }`}
+    >
       <svg
         viewBox={`0 0 ${SIZE} ${SIZE}`}
         className="aspect-square w-full max-w-[510px] shrink-0"
@@ -192,12 +200,14 @@ export function BudgetCategoryPieChart({ slices, totalCents }) {
               {centsToDisplay(active.amountCents)}
             </div>
             <div className="text-xs text-brand-ink/75">
-              {Math.round(active.pct)}% of expected spend
+              {Math.round(active.pct)}% of {spendLabel}
             </div>
           </>
         ) : (
           <>
-            <div className="text-sm text-brand-ink/75">Expected spend by category</div>
+            <div className="text-sm text-brand-ink/75">
+              {spendLabel.charAt(0).toUpperCase() + spendLabel.slice(1)} by category
+            </div>
             <div className="tabular-figures text-2xl font-bold text-brand-ink">
               {centsToDisplay(totalCents)}
             </div>
